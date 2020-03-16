@@ -1,8 +1,10 @@
 package main
 
 import (
-  "log"
-  "github.com/backwardn/gatt"
+    "bytes"
+    "encoding/binary"
+    "log"
+    "github.com/backwardn/gatt"
 )
 
 var done = make(chan struct{})
@@ -15,6 +17,14 @@ var uartServiceId = gatt.MustParseUUID("49535343-fe7d-4ae5-8fa9-9fafd205e455")
 var uartServiceRXCharId = gatt.MustParseUUID("49535343-8841-43f4-a8d4-ecbe34729bb3")
 var uartServiceTXCharId = gatt.MustParseUUID("49535343-1e4d-4bd9-ba61-23c647249616")
 
+var devicePeripheral gatt.Peripheral
+var receiveCharacteristic *gatt.Characteristic
+type Message struct {
+    // For now lets put together a generic trigger type message to parse
+    temperature float32
+}
+var bm71ReceiveChan = make(chan Message)
+
 func onPeriphDiscovered(p gatt.Peripheral, a *gatt.Advertisement, rssi int) {
     log.Printf("Discovered %s\n", a.LocalName)
 
@@ -25,6 +35,44 @@ func onPeriphDiscovered(p gatt.Peripheral, a *gatt.Advertisement, rssi int) {
     }
 
     return
+}
+
+func readFloat32(b []byte) (float32, error) {
+    var val float32
+    buf := bytes.NewReader(b)
+    err := binary.Read(buf, binary.LittleEndian, &val)
+    if err != nil {
+        return 0, err
+    }
+    return val, nil
+}
+
+func handlePacket(c *gatt.Characteristic, b []byte, e error) {
+    log.Printf("Got back %x\n", b)
+    return
+}
+
+func sendPacket(ch chan Message, stop chan bool) {
+    for {
+        select {
+            case msg := <- ch:
+                if receiveCharacteristic == nil {
+                    continue
+                }
+                if devicePeripheral == nil {
+                    continue
+                }
+
+                log.Println(msg)
+
+                devicePeripheral.WriteCharacteristic(receiveCharacteristic,
+                                                     []byte{0x74},
+                                                     true)
+                log.Printf("Wrote %s\n", string([]byte{0x74}))
+            case <- stop:
+                break
+        }
+    }
 }
 
 func onPeriphConnected(p gatt.Peripheral, err error) {
@@ -57,16 +105,14 @@ func onPeriphConnected(p gatt.Peripheral, err error) {
 
                 if (c.UUID().Equal(uartServiceTXCharId)) {
                     log.Println("TX Characteristic Found")
-
                     p.DiscoverDescriptors(nil, c)
-
-                    p.SetNotifyValue(c, func(c *gatt.Characteristic, b []byte, e error) {
-                        log.Printf("Got back %x\n", b)
-                    })
+                    p.SetNotifyValue(c, handlePacket)
                 } else if (c.UUID().Equal(uartServiceRXCharId)) {
                     log.Println("RX Characteristic Found")
-                    p.WriteCharacteristic(c, []byte{0x74}, true)
-                    log.Printf("Wrote %s\n", string([]byte{0x74}))
+                    devicePeripheral = p
+                    receiveCharacteristic = c
+                    //p.WriteCharacteristic(c, []byte{0x74}, true)
+                    //log.Printf("Wrote %s\n", string([]byte{0x74}))
                 }
             }
         }
@@ -92,6 +138,10 @@ func onPeriphDisconnected(p gatt.Peripheral, err error) {
 }
 
 func main() {
+    if receiveCharacteristic == nil {
+        log.Println("nil found")
+    }
+
     var DefaultClientOptions = []gatt.Option{
         gatt.LnxMaxConnections(1),
         gatt.LnxDeviceID(-1, false),
@@ -108,6 +158,8 @@ func main() {
         gatt.PeripheralConnected(onPeriphConnected),
         gatt.PeripheralDisconnected(onPeriphDisconnected),
     )
+
+    go 
 
     d.Init(onStateChanged)
     <-done
