@@ -8,6 +8,7 @@ var (
 	// Used for flags.
 	cfgFile     string
 	userLicense string
+	deviceID    string
 
 	rootCmd = &cobra.Command{
 		Use:   "cobra",
@@ -30,6 +31,8 @@ func init() {
 	rootCmd.PersistentFlags().StringP("author", "a", "YOUR NAME", "author name for copyright attribution")
 	rootCmd.PersistentFlags().StringVarP(&userLicense, "license", "l", "", "name of license for the project")
 	rootCmd.PersistentFlags().Bool("viper", true, "use Viper for configuration")
+
+	rootCmd.PersistentFlags().StringVarP(&deviceID, "device", "d", "", "Bluetooth device ID")
 
 	//rootCmd.AddCommand(addCmd)
 	//rootCmd.AddCommand(initCmd)

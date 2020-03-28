@@ -1,81 +1,56 @@
-package main
+package cmd
 
 import (
-	"bytes"
-	"encoding/binary"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/backwardn/gatt"
+	"github.com/spf13/cobra"
 )
 
-var done = make(chan struct{})
+func init() {
+	rootCmd.AddCommand(listCmd)
+}
 
-/*
-sudo setcap 'cap_net_raw,cap_net_admin=eip' bluetooth-test
-*/
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List Devices",
+	Long:  "List all valid device ids for command and control.",
+	Run:   discover,
+}
+
+var done = make(chan struct{})
 
 var uartServiceID = gatt.MustParseUUID("49535343-fe7d-4ae5-8fa9-9fafd205e455")
 var uartServiceRXCharID = gatt.MustParseUUID("49535343-8841-43f4-a8d4-ecbe34729bb3")
 var uartServiceTXCharID = gatt.MustParseUUID("49535343-1e4d-4bd9-ba61-23c647249616")
-
 var devicePeripheral gatt.Peripheral
 var receiveCharacteristic *gatt.Characteristic
 
-type Message struct {
-	// For now lets put together a generic trigger type message to parse
-	temperature float32
+func onStateChanged(d gatt.Device, s gatt.State) {
+	log.Println("State:", s)
+	switch s {
+	case gatt.StatePoweredOn:
+		log.Println("scanning...")
+		d.Scan([]gatt.UUID{}, false)
+		return
+	default:
+		d.StopScanning()
+	}
 }
 
-var bm71ReceiveChan = make(chan Message)
-
 func onPeriphDiscovered(p gatt.Peripheral, a *gatt.Advertisement, rssi int) {
-	log.Printf("Discovered %s\n", a.LocalName)
+	if strings.HasPrefix(a.LocalName, "camera-trigger-") {
+		log.Printf("Discovered %s RSSI %d\n", a.LocalName, rssi)
+	}
 
-	if a.LocalName == "camera-trigger-001" {
-		log.Printf("Peripheral Discovered: %s \n", p.Name())
+	if a.LocalName == deviceID {
 		p.Device().StopScanning()
 		p.Device().Connect(p)
 	}
 
 	return
-}
-
-func readFloat32(b []byte) (float32, error) {
-	var val float32
-	buf := bytes.NewReader(b)
-	err := binary.Read(buf, binary.LittleEndian, &val)
-	if err != nil {
-		return 0, err
-	}
-	return val, nil
-}
-
-func handlePacket(c *gatt.Characteristic, b []byte, e error) {
-	log.Printf("Got back %x\n", b)
-	return
-}
-
-func sendPacket(ch chan Message, stop chan bool) {
-	for {
-		select {
-		case msg := <-ch:
-			if receiveCharacteristic == nil {
-				continue
-			}
-			if devicePeripheral == nil {
-				continue
-			}
-
-			log.Println(msg)
-
-			devicePeripheral.WriteCharacteristic(receiveCharacteristic,
-				[]byte{0x74},
-				true)
-			log.Printf("Wrote %s\n", string([]byte{0x74}))
-		case <-stop:
-			break
-		}
-	}
 }
 
 func onPeriphConnected(p gatt.Peripheral, err error) {
@@ -114,8 +89,6 @@ func onPeriphConnected(p gatt.Peripheral, err error) {
 					log.Println("RX Characteristic Found")
 					devicePeripheral = p
 					receiveCharacteristic = c
-					//p.WriteCharacteristic(c, []byte{0x74}, true)
-					//log.Printf("Wrote %s\n", string([]byte{0x74}))
 				}
 			}
 		}
@@ -124,25 +97,26 @@ func onPeriphConnected(p gatt.Peripheral, err error) {
 	return
 }
 
-func onStateChanged(d gatt.Device, s gatt.State) {
-	log.Println("State:", s)
-	switch s {
-	case gatt.StatePoweredOn:
-		log.Println("scanning...")
-		d.Scan([]gatt.UUID{}, false)
-		return
-	default:
-		d.StopScanning()
+func handlePacket(c *gatt.Characteristic, b []byte, e error) {
+	fmt.Printf("Got back (%d bytes) ", len(b))
+	for i := 0; i < len(b); i++ {
+		fmt.Printf("0x%.2x, ", b[i])
 	}
+	fmt.Printf("\n")
+
+	// TODO: Add to buffer and then repeatedly attempt to read messages
+	//       from this buffer.  For larger packets, multiple reads are
+	//       necessary
+	//messages.ReadMessage(b)
+
+	return
 }
 
 func onPeriphDisconnected(p gatt.Peripheral, err error) {
 	log.Println("Disconnected")
 }
 
-/*
-
-func main() {
+func discover(cmd *cobra.Command, args []string) {
 	var DefaultClientOptions = []gatt.Option{
 		gatt.LnxMaxConnections(1),
 		gatt.LnxDeviceID(-1, false),
@@ -156,12 +130,9 @@ func main() {
 
 	d.Handle(
 		gatt.PeripheralDiscovered(onPeriphDiscovered),
-		gatt.PeripheralConnected(onPeriphConnected),
-		gatt.PeripheralDisconnected(onPeriphDisconnected),
 	)
 
 	d.Init(onStateChanged)
 	<-done
 	log.Println("Done")
 }
-*/

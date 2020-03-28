@@ -1,8 +1,9 @@
-package main
+package messages
 
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
 )
 
@@ -28,9 +29,8 @@ const (
  */
 const (
 	motionSensorConfiguration uint8 = 1
-	motionSensorMotion        uint8 = 2
+	motionSensorMotion        uint8 = 2 // Include violation bit
 	motionSensorStatus        uint8 = 3
-	motionSensorAlert         uint8 = 4
 	lightConfiguration        uint8 = 10
 	lightStatus               uint8 = 11
 	lightTrigger              uint8 = 12
@@ -94,13 +94,13 @@ type MotionSensorStatusMessage struct {
 	Length           uint8
 	Timestamp        Calendar
 	Lux              float32
+	LuxThreshold     float32
 	Temperature      float32
-	Threshold        uint16
+	Motion           uint16
+	MotionThreshold  uint16
 	Cooldown         float32
 	MotionSensorType uint8
-	LedOnMotion      uint8
-	LedOnTransmit    uint8
-	LedOnReceive     uint8
+	LedModes         uint8
 	LogEntries       uint16
 	BtSleepDelay     float32
 }
@@ -124,6 +124,9 @@ type CameraStatusMessage struct {
 	Temperature float32
 }
 
+var rxBufArray []byte = make([]byte, 0, 512)
+var rxBuf = bytes.NewBuffer(rxBufArray)
+
 func MarshalBinary(msg interface{}) (data []byte, err error) {
 	var buf bytes.Buffer
 	err = binary.Write(&buf, binary.BigEndian, msg)
@@ -134,66 +137,82 @@ func MarshalBinary(msg interface{}) (data []byte, err error) {
 	return buf.Bytes(), nil
 }
 
-func ReadMessage(b []byte) {
-	if len(b) < 2 {
-		log.Println("Cannot parse message less than 2 bytes")
-	}
-	header := BasicMessage{}
-	buf := bytes.NewBuffer(b)
-	err := binary.Read(buf, binary.BigEndian, &header)
+func ReadMessage(b []byte) (interface{}, error) {
+	_, err := rxBuf.Write(b)
 	if err != nil {
-		log.Fatal("binary.Read failed", err)
+		return nil, err
 	}
+
+	log.Printf("rxBuf.len %d\n", rxBuf.Len())
+
+	// Buffer what we have and wait for more data
+	if rxBuf.Len() < 2 {
+		return nil, nil
+	}
+
+	header := BasicMessage{rxBuf.Bytes()[0], rxBuf.Bytes()[1]}
+	log.Printf("Message Type 0x%x Length %d %d\n", header.Type, header.Length, rxBuf.Len())
 
 	switch header.Type {
-	case motionSensorAlert:
-		msg := MotionSensorAlertMessage{}
+	case motionSensorMotion:
+		msg := MotionSensorMotionMessage{}
+
+		// Validate message length
 		if int(header.Length) != binary.Size(msg) {
-			log.Fatalln("Unexpected MotionSensorAlertMessage Length")
+			rxBuf.Reset()
+			return nil, fmt.Errorf("%T Unexpected Length %d", msg, header.Length)
 		}
 
-		log.Println("MotionSensorAlertMessage")
-		err := binary.Read(buf, binary.BigEndian, &msg)
-		if err != nil {
-			log.Fatal("binary.Read failed", err)
+		// Ensure entire message is in buffer, if not just wait for more
+		if rxBuf.Len() < int(header.Length) {
+			return nil, nil
 		}
+
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
+		if err != nil {
+			return nil, err
+		}
+
+		return msg, nil
 	case motionSensorStatus:
 		msg := MotionSensorStatusMessage{}
+
+		// Validate message length
 		if int(header.Length) != binary.Size(msg) {
-			log.Fatalln("Unexpected MotionSensorStatusMessage Length")
+			rxBuf.Reset()
+			return nil, fmt.Errorf("%T Unexpected Length %d", msg, header.Length)
 		}
 
-		log.Println("MotionSensorStatusMessage")
-		err := binary.Read(buf, binary.BigEndian, &msg)
-		if err != nil {
-			log.Fatal("binary.Read failed", err)
-		}
-	case lightStatus:
-		msg := LightStatusMessage{}
-		if int(header.Length) != binary.Size(msg) {
-			log.Fatalln("Unexpected LightStatusMessage Length")
+		// Ensure entire message is in buffer, if not just wait for more
+		if rxBuf.Len() < int(header.Length) {
+			return nil, nil
 		}
 
-		log.Println("LightStatusMessage")
-		err := binary.Read(buf, binary.BigEndian, &msg)
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
 		if err != nil {
-			log.Fatal("binary.Read failed", err)
-		}
-	case cameraStatus:
-		msg := CameraStatusMessage{}
-		if int(header.Length) != binary.Size(msg) {
-			log.Fatalln("Unexpected CameraStatusMessage Length")
+			return nil, err
 		}
 
-		log.Println("CameraStatusMessage")
-		err := binary.Read(buf, binary.BigEndian, &msg)
-		if err != nil {
-			log.Fatal("binary.Read failed", err)
-		}
+		return msg, nil
+	default:
+		rxBuf.Reset()
+		return nil, fmt.Errorf("Unknown message type 0x%x, flushing buffer", header.Type)
 	}
 
-	buf.Reset()
 }
+
+/*
+func getMessageType(_type uint8) interface{} {
+	switch _type {
+	case motionSensorMotion:
+		return MotionSensorMotionMessage{}
+	case motionSensorStatus:
+		return MotionSensorStatusMessage{}
+	default:
+		return nil
+	}
+}
+*/
 
 /*
 func SendMessage(conn io.Writer, m encoding.BinaryMarshaler) {
