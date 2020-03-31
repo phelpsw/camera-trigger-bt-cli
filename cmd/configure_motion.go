@@ -39,7 +39,7 @@ func configMotionHandler(msg interface{}) error {
 	}
 
 	// TODO: Validate received config matches expected, if so
-	configMotionDone <- true
+	close(configMotionDone)
 	return nil
 }
 

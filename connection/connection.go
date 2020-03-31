@@ -14,9 +14,10 @@ import (
 var uartServiceID = gatt.MustParseUUID("49535343-fe7d-4ae5-8fa9-9fafd205e455")
 var uartServiceRXCharID = gatt.MustParseUUID("49535343-8841-43f4-a8d4-ecbe34729bb3")
 var uartServiceTXCharID = gatt.MustParseUUID("49535343-1e4d-4bd9-ba61-23c647249616")
+var device gatt.Device
 var devicePeripheral gatt.Peripheral
 var receiveCharacteristic *gatt.Characteristic
-var device string
+var remoteName string
 var debug bool
 
 type callbackType func(interface{}) error
@@ -26,7 +27,7 @@ var connected bool
 
 // Init a connection to the a bluetooth device with the specified name.
 func Init(_device string, _callback callbackType, _debug bool) {
-	device = _device
+	remoteName = _device
 	debug = _debug
 	callback = _callback
 	connected = false
@@ -44,9 +45,20 @@ func Init(_device string, _callback callbackType, _debug bool) {
 
 	d.Handle(
 		gatt.PeripheralDiscovered(onPeriphDiscovered),
+		gatt.PeripheralConnected(onPeriphConnected),
+		gatt.PeripheralDisconnected(onPeriphDisconnected),
 	)
 
 	d.Init(onStateChanged)
+	device = d
+}
+
+// Stop the connection
+func Stop() {
+	if devicePeripheral != nil {
+		device.CancelConnection(devicePeripheral)
+	}
+	//device.Stop() // Seems to hang on hci.Close()
 }
 
 // IsConnected indicates whether a connection is present
@@ -99,7 +111,7 @@ func onPeriphDiscovered(p gatt.Peripheral, a *gatt.Advertisement, rssi int) {
 	if strings.HasPrefix(a.LocalName, "camera-trigger-") {
 		log.Printf("Discovered %s RSSI %d\n", a.LocalName, rssi)
 
-		if a.LocalName == device {
+		if a.LocalName == remoteName {
 			p.Device().StopScanning()
 			p.Device().Connect(p)
 		}
