@@ -105,6 +105,32 @@ func TestReadMessage(t *testing.T) {
 			args{[]byte{0x03, 0xff}},
 			nil,
 			true},
+		{"Light Status Message",
+			args{[]byte{
+				0x0b, 0x1c,
+				0x0b, 0x00, 0x00, 0x01, 0x00, 0x12,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00}},
+			LightStatusMessage{
+				BasicMessage: BasicMessage{
+					Type:   11,
+					Length: 28},
+				Timestamp: Calendar{
+					Seconds: 11,
+					Minutes: 0,
+					Hours:   0,
+					Month:   1,
+					Year:    18},
+				Payload: LightStatus{
+					Delay:       0.0,
+					Attack:      0.0,
+					Sustain:     0.0,
+					Release:     0.0,
+					Temperature: 0.0}},
+			false},
 		{"Motion Sensor Motion",
 			args{[]byte{
 				0x02, 0x04,

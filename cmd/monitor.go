@@ -3,7 +3,7 @@ package cmd
 import (
 	"log"
 
-	"github.com/backwardn/gatt"
+	"github.com/phelpsw/camera-trigger-bt-cli/connection"
 	"github.com/spf13/cobra"
 )
 
@@ -18,25 +18,16 @@ var monitorCmd = &cobra.Command{
 	Run:   monitor,
 }
 
+var monitorDone = make(chan struct{})
+
+func monitorHandler(msg interface{}) error {
+	return nil
+}
+
 func monitor(cmd *cobra.Command, args []string) {
-	var DefaultClientOptions = []gatt.Option{
-		gatt.LnxMaxConnections(1),
-		gatt.LnxDeviceID(-1, false),
-	}
 
-	d, err := gatt.NewDevice(DefaultClientOptions...)
-	if err != nil {
-		log.Fatalf("Failed to open device, err: %s\n", err)
-		return
-	}
+	connection.Init(deviceID, monitorHandler, debug)
 
-	d.Handle(
-		gatt.PeripheralDiscovered(onPeriphDiscovered),
-		gatt.PeripheralConnected(onPeriphConnected),
-		gatt.PeripheralDisconnected(onPeriphDisconnected),
-	)
-
-	d.Init(onStateChanged)
-	<-done
+	<-monitorDone
 	log.Println("Done")
 }

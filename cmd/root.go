@@ -9,6 +9,7 @@ var (
 	cfgFile     string
 	userLicense string
 	deviceID    string
+	debug       bool
 
 	rootCmd = &cobra.Command{
 		Use:   "cobra",
@@ -33,7 +34,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("viper", true, "use Viper for configuration")
 
 	rootCmd.PersistentFlags().StringVarP(&deviceID, "device", "d", "", "Bluetooth device ID")
-
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set flag for debug messages")
 	//rootCmd.AddCommand(addCmd)
 	//rootCmd.AddCommand(initCmd)
 }
