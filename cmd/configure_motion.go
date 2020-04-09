@@ -15,10 +15,10 @@ func init() {
 }
 
 var cfgMotionCmd = &cobra.Command{
-	Use:   "cfgmotion <motion-threshold> <light-threshold>",
+	Use:   "cfgmotion <motion-threshold> <lux-low-threshold> <lux-high-threshold>",
 	Short: "Configure Motion Sensor",
 	Long:  "Configure Motion Sensor",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(3),
 	Run:   configMotion,
 }
 
@@ -36,6 +36,7 @@ func configMotionHandler(msg interface{}) error {
 			return err
 		}
 		commanded = true
+		return nil
 	}
 
 	// TODO: Validate received config matches expected, if so

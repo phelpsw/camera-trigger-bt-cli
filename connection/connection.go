@@ -85,6 +85,14 @@ func WriteMessage(msg interface{}) error {
 		return err
 	}
 
+	if debug {
+		fmt.Printf("(%d bytes) ", len(bufArray))
+		for i := 0; i < len(bufArray); i++ {
+			fmt.Printf("0x%.2x, ", bufArray[i])
+		}
+		fmt.Printf("\n")
+	}
+
 	err = devicePeripheral.WriteCharacteristic(receiveCharacteristic,
 		bufArray,
 		true)

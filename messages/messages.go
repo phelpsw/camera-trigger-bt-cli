@@ -30,8 +30,7 @@ type Message interface{}
  */
 const (
 	motionSensorConfiguration uint8 = 1
-	motionSensorMotion        uint8 = 2 // Include violation bit
-	motionSensorStatus        uint8 = 3
+	motionSensorStatus        uint8 = 2
 	lightConfiguration        uint8 = 10
 	lightStatus               uint8 = 11
 	lightTrigger              uint8 = 12
@@ -73,12 +72,6 @@ type MotionSensorAlertMessage struct {
 	Length uint8
 }
 
-type MotionSensorMotionMessage struct {
-	Type   uint8
-	Length uint8
-	Motion uint16
-}
-
 type motionSensorConfigMessage struct {
 	Type            uint8
 	Length          uint8
@@ -102,16 +95,17 @@ type MotionSensorStatusMessage struct {
 	Type             uint8
 	Length           uint8
 	Timestamp        Calendar
-	Lux              float32
-	LuxThreshold     float32
 	Temperature      float32
+	Voltage          float32
 	Motion           uint16
 	MotionThreshold  uint16
+	Lux              float32
+	LuxLowThreshold  float32
+	LuxHighThreshold float32
 	Cooldown         float32
 	MotionSensorType uint8
 	LedModes         uint8
 	LogEntries       uint16
-	BtSleepDelay     float32
 }
 
 type LightStatus struct {
@@ -171,14 +165,6 @@ func ReadMessage(b []byte) (interface{}, error) {
 	}
 
 	switch header.Type {
-	case motionSensorMotion:
-		msg := MotionSensorMotionMessage{}
-		err = binary.Read(rxBuf, binary.BigEndian, &msg)
-		if err != nil {
-			return nil, err
-		}
-
-		return msg, nil
 	case motionSensorStatus:
 		msg := MotionSensorStatusMessage{}
 
@@ -204,8 +190,6 @@ func ReadMessage(b []byte) (interface{}, error) {
 
 func getMessageTypeLength(_type uint8) int {
 	switch _type {
-	case motionSensorMotion:
-		return binary.Size(MotionSensorMotionMessage{})
 	case motionSensorStatus:
 		return binary.Size(MotionSensorStatusMessage{})
 	case lightStatus:
