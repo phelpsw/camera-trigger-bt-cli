@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"reflect"
 )
 
 /*
@@ -67,27 +68,25 @@ type LightConfigurationMessage struct {
 	Release float32
 }
 
-type MotionSensorAlertMessage struct {
-	Type   uint8
-	Length uint8
-}
-
-type motionSensorConfigMessage struct {
-	Type            uint8
-	Length          uint8
-	MotionThreshold uint16
-	LuxThreshold    float32
+type MotionSensorConfigMessage struct {
+	Type             uint8
+	Length           uint8
+	MotionThreshold  uint16
+	LuxLowThreshold  float32
+	LuxHighThreshold float32
 }
 
 // NewMotionSensorConfigMessage generates a message of this type
 func NewMotionSensorConfigMessage(
 	motionThresh uint16,
-	luxThresh float32) Message {
-	return motionSensorConfigMessage{
-		Type:            motionSensorConfiguration,
-		Length:          uint8(binary.Size(motionSensorConfigMessage{})),
-		MotionThreshold: motionThresh,
-		LuxThreshold:    luxThresh,
+	luxLowThresh float32,
+	luxHighThresh float32) Message {
+	return MotionSensorConfigMessage{
+		Type:             motionSensorConfiguration,
+		Length:           uint8(binary.Size(MotionSensorConfigMessage{})),
+		MotionThreshold:  motionThresh,
+		LuxLowThreshold:  luxLowThresh,
+		LuxHighThreshold: luxHighThresh,
 	}
 }
 
@@ -185,7 +184,22 @@ func ReadMessage(b []byte) (interface{}, error) {
 		rxBuf.Reset()
 		return nil, fmt.Errorf("Unknown message type 0x%x, flushing buffer", header.Type)
 	}
+}
 
+// WriteMessage serializes the message to a Buffer
+func WriteMessage(msg interface{}) (*bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+
+	switch msg.(type) {
+	case MotionSensorConfigMessage:
+		err := binary.Write(buf, binary.BigEndian, msg.(MotionSensorConfigMessage))
+		if err != nil {
+			return buf, err
+		}
+		return buf, nil
+	default:
+		return nil, fmt.Errorf("unknown type %+v", reflect.TypeOf(msg))
+	}
 }
 
 func getMessageTypeLength(_type uint8) int {
@@ -198,26 +212,3 @@ func getMessageTypeLength(_type uint8) int {
 		return -1
 	}
 }
-
-/*
-
-func MarshalBinary(msg interface{}) (data []byte, err error) {
-	var buf bytes.Buffer
-	err = binary.Write(&buf, binary.BigEndian, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-func SendMessage(conn io.Writer, m encoding.BinaryMarshaler) {
-	if bs, err := m.MarshalBinary(); err != nil {
-		log.Fatalln(err)
-	}
-
-	if _, err := conn.Write(bs); err != nil {
-		log.Fatalln(err)
-	}
-}
-*/

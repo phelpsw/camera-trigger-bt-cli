@@ -2,13 +2,11 @@ package connection
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"log"
 	"strings"
 
 	"github.com/backwardn/gatt"
-	"github.com/phelpsw/camera-trigger-bt-cli/messages"
 )
 
 var uartServiceID = gatt.MustParseUUID("49535343-fe7d-4ae5-8fa9-9fafd205e455")
@@ -20,13 +18,13 @@ var receiveCharacteristic *gatt.Characteristic
 var remoteName string
 var debug bool
 
-type callbackType func(interface{}) error
+type readBytesCallbackType func(b []byte) error
 
-var callback callbackType
+var callback readBytesCallbackType
 var connected bool
 
 // Init a connection to the a bluetooth device with the specified name.
-func Init(_device string, _callback callbackType, _debug bool) {
+func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 	remoteName = _device
 	debug = _debug
 	callback = _callback
@@ -39,8 +37,7 @@ func Init(_device string, _callback callbackType, _debug bool) {
 
 	d, err := gatt.NewDevice(DefaultClientOptions...)
 	if err != nil {
-		log.Fatalf("Failed to open device, err: %s\n", err)
-		return
+		return fmt.Errorf("failed to open device, err: %s", err)
 	}
 
 	d.Handle(
@@ -51,6 +48,8 @@ func Init(_device string, _callback callbackType, _debug bool) {
 
 	d.Init(onStateChanged)
 	device = d
+
+	return nil
 }
 
 // Stop the connection
@@ -66,35 +65,18 @@ func IsConnected() bool {
 	return connected
 }
 
-// WriteMessage writes to the connected bluetooth device
-func WriteMessage(msg interface{}) error {
-	if !connected {
-		return fmt.Errorf("attempting write when not connected")
-	}
-	if receiveCharacteristic == nil {
-		return fmt.Errorf("attempting write when characteristic unknown")
-	}
-	if devicePeripheral == nil {
-		return fmt.Errorf("attempting write when device unknown")
-	}
-
-	var bufArray []byte = make([]byte, 0, 512)
-	var buf = bytes.NewBuffer(bufArray)
-	err := binary.Write(buf, binary.BigEndian, msg)
-	if err != nil {
-		return err
-	}
-
+func WriteBytes(b *bytes.Buffer) error {
 	if debug {
-		fmt.Printf("(%d bytes) ", len(bufArray))
-		for i := 0; i < len(bufArray); i++ {
-			fmt.Printf("0x%.2x, ", bufArray[i])
+		fmt.Printf("TX %d bytes: ", b.Len())
+
+		for i := 0; i < b.Len(); i++ {
+			fmt.Printf("0x%.2x, ", b.Bytes()[i])
 		}
 		fmt.Printf("\n")
 	}
 
-	err = devicePeripheral.WriteCharacteristic(receiveCharacteristic,
-		bufArray,
+	err := devicePeripheral.WriteCharacteristic(receiveCharacteristic,
+		b.Bytes(),
 		true)
 	if err != nil {
 		return err
@@ -138,20 +120,13 @@ func onPeriphConnected(p gatt.Peripheral, err error) {
 	txCfg := false
 	for _, service := range services {
 		if service.UUID().Equal(uartServiceID) {
-			//log.Printf("Expected service found: %s (%s)\n",
-			//	service.Name(),
-			//	service.UUID())
-
 			cs, _ := p.DiscoverCharacteristics(nil, service)
 			for _, c := range cs {
-				//log.Printf("Characteristic %s\n", c.UUID())
 				if c.UUID().Equal(uartServiceTXCharID) {
-					//log.Println("TX Characteristic Found")
 					p.DiscoverDescriptors(nil, c)
-					p.SetNotifyValue(c, handlePacket)
+					p.SetNotifyValue(c, readBytes)
 					rxCfg = true
 				} else if c.UUID().Equal(uartServiceRXCharID) {
-					//log.Println("RX Characteristic Found")
 					devicePeripheral = p
 					receiveCharacteristic = c
 					txCfg = true
@@ -167,29 +142,24 @@ func onPeriphConnected(p gatt.Peripheral, err error) {
 	return
 }
 
-func handlePacket(c *gatt.Characteristic, b []byte, e error) {
+func readBytes(c *gatt.Characteristic, b []byte, e error) {
+
+	if e != nil {
+		log.Printf("Connection packet handling error\n")
+		log.Printf("%+v", e)
+		return
+	}
+
 	if debug {
-		fmt.Printf("(%d bytes) ", len(b))
+		fmt.Printf("RX %d bytes: ", len(b))
 		for i := 0; i < len(b); i++ {
 			fmt.Printf("0x%.2x, ", b[i])
 		}
 		fmt.Printf("\n")
 	}
 
-	msg, err := messages.ReadMessage(b)
-	if err != nil {
-		log.Printf("Message handling error: %s\n", err)
-	}
-
-	// TODO: Check if the message is a type with a Calendar internally
-	// If so, confirm the Calendar is within 10 minutes of the current
-	// time.  If not, immediately calculate a time correction and
-	// command.
-	//
-	// If time correction needs to occur, don't show this status message
-
 	if callback != nil {
-		err := callback(msg)
+		err := callback(b)
 		if err != nil {
 			log.Printf("Callback handling error: %s\n", err)
 		}

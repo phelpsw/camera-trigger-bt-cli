@@ -12,7 +12,7 @@ var (
 	debug       bool
 
 	rootCmd = &cobra.Command{
-		Use:   "cobra",
+		Use:   "bluetooth-test",
 		Short: "A generator for Cobra based Applications",
 		Long: `Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
@@ -28,15 +28,8 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cobra.yaml)")
-	rootCmd.PersistentFlags().StringP("author", "a", "YOUR NAME", "author name for copyright attribution")
-	rootCmd.PersistentFlags().StringVarP(&userLicense, "license", "l", "", "name of license for the project")
-	rootCmd.PersistentFlags().Bool("viper", true, "use Viper for configuration")
-
 	rootCmd.PersistentFlags().StringVarP(&deviceID, "device", "d", "", "Bluetooth device ID")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set flag for debug messages")
-	//rootCmd.AddCommand(addCmd)
-	//rootCmd.AddCommand(initCmd)
 }
 
 func initConfig() {

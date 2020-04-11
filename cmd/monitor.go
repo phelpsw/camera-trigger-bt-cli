@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/phelpsw/camera-trigger-bt-cli/connection"
+	"github.com/phelpsw/camera-trigger-bt-cli/boards"
 	"github.com/spf13/cobra"
 )
 
@@ -19,30 +19,35 @@ var monitorCmd = &cobra.Command{
 	Run:   monitor,
 }
 
-var monitorDone = make(chan struct{})
-
-// TODO: Setup message specific handler deal like
-// the gatt Device type
-
-// TODO: Increase BT message freq
-
 // TODO: Add more values to BT messages
 
 // TODO: Investigate weird clock rolling issue, bcd issue?
 
-// TODO: Double check motion u16 and lux float are being encoded properly
-
-func monitorHandler(msg interface{}) error {
-	if msg != nil {
-		fmt.Printf("%+v\n", msg)
+// TODO: Make this handle the generic board type rather than something specific
+// to the motion sensor
+func monitorHandler(m interface{}) error {
+	switch m.(type) {
+	case boards.Motion:
+		b := m.(boards.Motion)
+		fmt.Printf("Motion %d / %d\n", b.Motion(), b.MotionThreshold())
 	}
+
 	return nil
 }
 
 func monitor(cmd *cobra.Command, args []string) {
+	var done = make(chan struct{})
 
-	connection.Init(deviceID, monitorHandler, debug)
+	m := boards.Basic{}
 
-	<-monitorDone
+	err := m.Init(deviceID, debug)
+	if err != nil {
+		log.Panicln(err)
+		return
+	}
+
+	m.SetUpdateCallback(monitorHandler)
+
+	<-done
 	log.Println("Done")
 }

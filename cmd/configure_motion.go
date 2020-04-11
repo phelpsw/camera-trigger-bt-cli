@@ -3,51 +3,93 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"strings"
+	"reflect"
 
-	"github.com/phelpsw/camera-trigger-bt-cli/connection"
-	"github.com/phelpsw/camera-trigger-bt-cli/messages"
+	"github.com/phelpsw/camera-trigger-bt-cli/boards"
 	"github.com/spf13/cobra"
 )
 
+var (
+	cfgMotionCmd = &cobra.Command{
+		Use:   "cfgmotion",
+		Short: "Configure Motion Sensor",
+		Long:  "Configure Motion Sensor",
+		Run:   configMotion,
+	}
+
+	done = make(chan struct{})
+
+	thresh        uint16
+	threshUpdate  bool = false
+	luxLow        float32
+	luxLowUpdate  bool = false
+	luxHigh       float32
+	luxHighUpdate bool = false
+)
+
 func init() {
+	cfgMotionCmd.Flags().Uint16VarP(&thresh, "motion", "m", 0, "set the motion trigger threshold")
+	cfgMotionCmd.Flags().Float32VarP(&luxLow, "luxlow", "l", 0, "set the lux low threshold")
+	cfgMotionCmd.Flags().Float32VarP(&luxHigh, "luxhigh", "t", 0, "set the lux high threshold")
+
 	rootCmd.AddCommand(cfgMotionCmd)
 }
 
-var cfgMotionCmd = &cobra.Command{
-	Use:   "cfgmotion <motion-threshold> <lux-low-threshold> <lux-high-threshold>",
-	Short: "Configure Motion Sensor",
-	Long:  "Configure Motion Sensor",
-	Args:  cobra.ExactArgs(3),
-	Run:   configMotion,
-}
+func configMotionHandler(b interface{}) error {
+	switch b.(type) {
+	case *boards.Motion:
+		m := b.(*boards.Motion)
 
-var configMotionDone = make(chan bool)
-var commanded bool = false
+		if threshUpdate && m.MotionThreshold() != thresh {
+			err := m.SetMotionThreshold(thresh, false)
+			if err != nil {
+				return err
+			}
+		}
 
-func configMotionHandler(msg interface{}) error {
-	// TODO: Validate a motion status type message was handled
-	fmt.Printf("%+v\n", msg)
+		if luxLowUpdate && m.LuxLowThreshold() != luxLow {
+			err := m.SetLuxLowThreshold(luxLow, false)
+			if err != nil {
+				return err
+			}
+		}
 
-	if connection.IsConnected() && !commanded {
-		msg := messages.NewMotionSensorConfigMessage(1000, 100.0)
-		err := connection.WriteMessage(msg)
+		if luxHighUpdate && m.LuxHighThreshold() != luxHigh {
+			err := m.SetLuxHighThreshold(luxHigh, false)
+			if err != nil {
+				return err
+			}
+		}
+
+		err := m.Sync()
 		if err != nil {
 			return err
 		}
-		commanded = true
-		return nil
-	}
 
-	// TODO: Validate received config matches expected, if so
-	close(configMotionDone)
+		if m.IsSynced() {
+			close(done)
+		}
+	default:
+		return fmt.Errorf("unknown type %+v", reflect.TypeOf(b))
+	}
 	return nil
 }
 
 func configMotion(cmd *cobra.Command, args []string) {
-	fmt.Println("Echo: " + strings.Join(args, " "))
-	connection.Init(deviceID, configMotionHandler, debug)
+	threshUpdate = cmd.Flags().Changed("motion")
+	luxLowUpdate = cmd.Flags().Changed("luxlow")
+	luxHighUpdate = cmd.Flags().Changed("luxhigh")
 
-	<-configMotionDone
+	m := boards.Motion{}
+
+	err := m.Init(deviceID, debug)
+	if err != nil {
+		log.Panicln(err)
+		return
+	}
+
+	m.SetUpdateCallback(configMotionHandler)
+
+	<-done
 	log.Println("Done")
 }
