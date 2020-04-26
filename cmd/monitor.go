@@ -30,6 +30,14 @@ func monitorHandler(m interface{}) error {
 	case boards.Motion:
 		b := m.(boards.Motion)
 		fmt.Printf("Motion %d / %d\n", b.Motion(), b.MotionThreshold())
+	case boards.Light:
+		b := m.(boards.Light)
+		fmt.Printf("Level %f (%f/%f/%f/%f)\n",
+			b.Level(),
+			b.Delay(),
+			b.Attack(),
+			b.Sustain(),
+			b.Release())
 	}
 
 	return nil

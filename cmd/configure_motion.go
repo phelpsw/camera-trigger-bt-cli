@@ -17,7 +17,7 @@ var (
 		Run:   configMotion,
 	}
 
-	done = make(chan struct{})
+	motionDone = make(chan struct{})
 
 	thresh        uint16
 	threshUpdate  bool = false
@@ -67,7 +67,7 @@ func configMotionHandler(b interface{}) error {
 		}
 
 		if m.IsSynced() {
-			close(done)
+			close(motionDone)
 		}
 	default:
 		return fmt.Errorf("unknown type %+v", reflect.TypeOf(b))
@@ -90,6 +90,6 @@ func configMotion(cmd *cobra.Command, args []string) {
 
 	m.SetUpdateCallback(configMotionHandler)
 
-	<-done
+	<-motionDone
 	log.Println("Done")
 }

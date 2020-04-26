@@ -32,12 +32,11 @@ type Message interface{}
 const (
 	motionSensorConfiguration uint8 = 1
 	motionSensorStatus        uint8 = 2
+	motionSensorTrigger       uint8 = 3
 	lightConfiguration        uint8 = 10
 	lightStatus               uint8 = 11
-	lightTrigger              uint8 = 12
 	cameraConfiguration       uint8 = 20
 	cameraStatus              uint8 = 21
-	cameraTrigger             uint8 = 22
 )
 
 type Calendar struct {
@@ -53,19 +52,31 @@ type BasicMessage struct {
 	Length uint8
 }
 
-type CameraConfigurationMessage struct {
-	Type     uint8
-	Length   uint8
-	Exposure float32
-}
-
-type LightConfigurationMessage struct {
+type LightConfigMessage struct {
 	Type    uint8
 	Length  uint8
+	Level   float32
 	Delay   float32
 	Attack  float32
 	Sustain float32
 	Release float32
+}
+
+func NewLightConfigMessage(
+	level float32,
+	delay float32,
+	attack float32,
+	sustain float32,
+	release float32) Message {
+	return LightConfigMessage{
+		Type:    lightConfiguration,
+		Length:  uint8(binary.Size(LightConfigMessage{})),
+		Level:   level,
+		Delay:   delay,
+		Attack:  attack,
+		Sustain: sustain,
+		Release: release,
+	}
 }
 
 type MotionSensorConfigMessage struct {
@@ -90,6 +101,27 @@ func NewMotionSensorConfigMessage(
 	}
 }
 
+type MotionSensorTriggerMessage struct {
+	Type      uint8
+	Length    uint8
+	Timestamp Calendar
+	Motion    uint16
+	Lux       float32
+}
+
+// NewMotionSensorTriggerMessage generates a message of this type
+func NewMotionSensorTriggerMessage(
+	motion uint16,
+	lux float32) Message {
+	return MotionSensorTriggerMessage{
+		Type:      motionSensorTrigger,
+		Length:    uint8(binary.Size(MotionSensorTriggerMessage{})),
+		Timestamp: Calendar{0, 0, 0, 0, 0},
+		Motion:    motion,
+		Lux:       lux,
+	}
+}
+
 type MotionSensorStatusMessage struct {
 	Type             uint8
 	Length           uint8
@@ -108,11 +140,17 @@ type MotionSensorStatusMessage struct {
 }
 
 type LightStatus struct {
+	Temperature float32
+	Voltage     float32
+	Level       float32
 	Delay       float32
 	Attack      float32
 	Sustain     float32
 	Release     float32
-	Temperature float32
+	//Current     float32
+	//Voltage     float32
+	LedModes   uint8
+	LogEntries uint16
 }
 
 type LightStatusMessage struct {
@@ -121,16 +159,6 @@ type LightStatusMessage struct {
 	Timestamp Calendar
 	Payload   LightStatus
 }
-
-/*
-type CameraStatusMessage struct {
-	Type        uint8
-	Length      uint8
-	Timestamp   Calendar
-	Exposure    float32
-	Temperature float32
-}
-*/
 
 var rxBufArray []byte = make([]byte, 0, 512)
 var rxBuf = bytes.NewBuffer(rxBufArray)
@@ -193,6 +221,18 @@ func WriteMessage(msg interface{}) (*bytes.Buffer, error) {
 	switch msg.(type) {
 	case MotionSensorConfigMessage:
 		err := binary.Write(buf, binary.BigEndian, msg.(MotionSensorConfigMessage))
+		if err != nil {
+			return buf, err
+		}
+		return buf, nil
+	case MotionSensorTriggerMessage:
+		err := binary.Write(buf, binary.BigEndian, msg.(MotionSensorTriggerMessage))
+		if err != nil {
+			return buf, err
+		}
+		return buf, nil
+	case LightConfigMessage:
+		err := binary.Write(buf, binary.BigEndian, msg.(LightConfigMessage))
 		if err != nil {
 			return buf, err
 		}

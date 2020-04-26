@@ -26,6 +26,8 @@ func (m *Basic) handleBytes(b []byte) error {
 	case messages.MotionSensorStatusMessage:
 		fmt.Println("MotionSensorStatusMessage")
 		fmt.Printf("%+v\n", msg.(messages.MotionSensorStatusMessage))
+	case messages.LightStatusMessage:
+		fmt.Printf("%+v\n", msg.(messages.LightStatusMessage))
 	default:
 		fmt.Println("Unknown")
 		return fmt.Errorf("unexpected message type %+v", msg)
