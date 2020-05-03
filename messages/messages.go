@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"reflect"
 )
 
 /*
@@ -30,26 +29,83 @@ type Message interface{}
  * Bluetooth Message Types
  */
 const (
-	motionSensorConfiguration uint8 = 1
-	motionSensorStatus        uint8 = 2
-	motionSensorTrigger       uint8 = 3
-	lightConfiguration        uint8 = 10
-	lightStatus               uint8 = 11
-	cameraConfiguration       uint8 = 20
-	cameraStatus              uint8 = 21
+	logRequest                uint8 = 0x01
+	logResponse               uint8 = 0x02
+	logReset                  uint8 = 0x03
+	setTime                   uint8 = 0x04
+	motionSensorConfiguration uint8 = 0x10
+	motionSensorStatus        uint8 = 0x11
+	motionSensorTrigger       uint8 = 0x12
+	lightConfiguration        uint8 = 0x20
+	lightStatus               uint8 = 0x21
+	cameraConfiguration       uint8 = 0x30
+	cameraStatus              uint8 = 0x31
 )
 
 type Calendar struct {
-	Seconds uint8
-	Minutes uint8
-	Hours   uint8
-	Month   uint8
-	Year    uint16
+	Seconds    uint8
+	Minutes    uint8
+	Hours      uint8
+	DayOfWeek  uint8
+	DayOfMonth uint8
+	Month      uint8
+	Year       uint16
 }
 
 type BasicMessage struct {
 	Type   uint8
 	Length uint8
+}
+
+type LogRequestMessage struct {
+	Type   uint8
+	Length uint8
+	Index  uint16
+}
+
+func NewLogRequestMessage(
+	index uint16) Message {
+	return LogRequestMessage{
+		Type:   logRequest,
+		Length: uint8(binary.Size(LogRequestMessage{})),
+		Index:  index,
+	}
+}
+
+type LogResponseMessage struct {
+	Type      uint8
+	Length    uint8
+	Index     uint16
+	Timestamp Calendar
+	LogType   uint8
+	Payload   [13]byte
+}
+
+type LogResetMessage struct {
+	Type   uint8
+	Length uint8
+}
+
+func NewLogResetMessage() Message {
+	return LogResetMessage{
+		Type:   logReset,
+		Length: uint8(binary.Size(LogResetMessage{})),
+	}
+}
+
+type SetTimeMessage struct {
+	Type      uint8
+	Length    uint8
+	Timestamp Calendar
+}
+
+func NewSetTimeMessage(
+	timestamp Calendar) Message {
+	return SetTimeMessage{
+		Type:      setTime,
+		Length:    uint8(binary.Size(SetTimeMessage{})),
+		Timestamp: timestamp,
+	}
 }
 
 type LightConfigMessage struct {
@@ -116,7 +172,7 @@ func NewMotionSensorTriggerMessage(
 	return MotionSensorTriggerMessage{
 		Type:      motionSensorTrigger,
 		Length:    uint8(binary.Size(MotionSensorTriggerMessage{})),
-		Timestamp: Calendar{0, 0, 0, 0, 0},
+		Timestamp: Calendar{0, 0, 0, 0, 0, 0, 0},
 		Motion:    motion,
 		Lux:       lux,
 	}
@@ -192,9 +248,16 @@ func ReadMessage(b []byte) (interface{}, error) {
 	}
 
 	switch header.Type {
+	case logResponse:
+		msg := LogResponseMessage{}
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
+		if err != nil {
+			return nil, err
+		}
+
+		return msg, nil
 	case motionSensorStatus:
 		msg := MotionSensorStatusMessage{}
-
 		err = binary.Read(rxBuf, binary.BigEndian, &msg)
 		if err != nil {
 			return nil, err
@@ -218,32 +281,17 @@ func ReadMessage(b []byte) (interface{}, error) {
 func WriteMessage(msg interface{}) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 
-	switch msg.(type) {
-	case MotionSensorConfigMessage:
-		err := binary.Write(buf, binary.BigEndian, msg.(MotionSensorConfigMessage))
-		if err != nil {
-			return buf, err
-		}
-		return buf, nil
-	case MotionSensorTriggerMessage:
-		err := binary.Write(buf, binary.BigEndian, msg.(MotionSensorTriggerMessage))
-		if err != nil {
-			return buf, err
-		}
-		return buf, nil
-	case LightConfigMessage:
-		err := binary.Write(buf, binary.BigEndian, msg.(LightConfigMessage))
-		if err != nil {
-			return buf, err
-		}
-		return buf, nil
-	default:
-		return nil, fmt.Errorf("unknown type %+v", reflect.TypeOf(msg))
+	err := binary.Write(buf, binary.BigEndian, msg)
+	if err != nil {
+		return buf, err
 	}
+	return buf, nil
 }
 
 func getMessageTypeLength(_type uint8) int {
 	switch _type {
+	case logResponse:
+		return binary.Size(LogResponseMessage{})
 	case motionSensorStatus:
 		return binary.Size(MotionSensorStatusMessage{})
 	case lightStatus:

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/phelpsw/camera-trigger-bt-cli/boards"
 	"github.com/spf13/cobra"
@@ -26,6 +27,9 @@ var monitorCmd = &cobra.Command{
 // TODO: Make this handle the generic board type rather than something specific
 // to the motion sensor
 func monitorHandler(m interface{}) error {
+
+	fmt.Println(reflect.TypeOf(m))
+
 	switch m.(type) {
 	case boards.Motion:
 		b := m.(boards.Motion)
