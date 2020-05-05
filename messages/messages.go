@@ -196,17 +196,17 @@ type MotionSensorStatusMessage struct {
 }
 
 type LightStatus struct {
-	Temperature float32
-	Voltage     float32
-	Level       float32
-	Delay       float32
-	Attack      float32
-	Sustain     float32
-	Release     float32
-	//Current     float32
-	//Voltage     float32
-	LedModes   uint8
-	LogEntries uint16
+	Temperature      float32
+	Voltage          float32
+	Level            float32
+	Delay            float32
+	Attack           float32
+	Sustain          float32
+	Release          float32
+	LightTemperature float32
+	Current          float32
+	LedModes         uint8
+	LogEntries       uint16
 }
 
 type LightStatusMessage struct {
