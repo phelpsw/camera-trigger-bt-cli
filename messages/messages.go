@@ -138,22 +138,25 @@ func NewLightConfigMessage(
 type MotionSensorConfigMessage struct {
 	Type             uint8
 	Length           uint8
-	MotionThreshold  uint16
+	MotionThreshold  float32
 	LuxLowThreshold  float32
 	LuxHighThreshold float32
+	Cooldown         float32
 }
 
 // NewMotionSensorConfigMessage generates a message of this type
 func NewMotionSensorConfigMessage(
-	motionThresh uint16,
+	motionThresh float32,
 	luxLowThresh float32,
-	luxHighThresh float32) Message {
+	luxHighThresh float32,
+	cooldown float32) Message {
 	return MotionSensorConfigMessage{
 		Type:             motionSensorConfiguration,
 		Length:           uint8(binary.Size(MotionSensorConfigMessage{})),
 		MotionThreshold:  motionThresh,
 		LuxLowThreshold:  luxLowThresh,
 		LuxHighThreshold: luxHighThresh,
+		Cooldown:         cooldown,
 	}
 }
 
@@ -161,19 +164,16 @@ type MotionSensorTriggerMessage struct {
 	Type      uint8
 	Length    uint8
 	Timestamp Calendar
-	Motion    uint16
 	Lux       float32
 }
 
 // NewMotionSensorTriggerMessage generates a message of this type
 func NewMotionSensorTriggerMessage(
-	motion uint16,
 	lux float32) Message {
 	return MotionSensorTriggerMessage{
 		Type:      motionSensorTrigger,
 		Length:    uint8(binary.Size(MotionSensorTriggerMessage{})),
 		Timestamp: Calendar{0, 0, 0, 0, 0, 0, 0},
-		Motion:    motion,
 		Lux:       lux,
 	}
 }
@@ -184,8 +184,8 @@ type MotionSensorStatusMessage struct {
 	Timestamp        Calendar
 	Temperature      float32
 	Voltage          float32
-	Motion           uint16
-	MotionThreshold  uint16
+	Motion           float32
+	MotionThreshold  float32
 	Lux              float32
 	LuxLowThreshold  float32
 	LuxHighThreshold float32

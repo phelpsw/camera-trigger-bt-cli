@@ -243,12 +243,12 @@ func (m *Light) Sync() error {
 	return nil
 }
 
-func (m *Light) Trigger(motion uint16, lux float32) error {
+func (m *Light) Trigger(lux float32) error {
 	if !m.IsSynced() {
 		return fmt.Errorf("not synced")
 	}
 
-	msg := messages.NewMotionSensorTriggerMessage(motion, lux)
+	msg := messages.NewMotionSensorTriggerMessage(lux)
 
 	if !connection.IsConnected() {
 		return fmt.Errorf("not connected")

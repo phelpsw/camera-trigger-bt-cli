@@ -19,18 +19,21 @@ var (
 
 	motionDone = make(chan struct{})
 
-	thresh        uint16
-	threshUpdate  bool = false
-	luxLow        float32
-	luxLowUpdate  bool = false
-	luxHigh       float32
-	luxHighUpdate bool = false
+	thresh         float32
+	threshUpdate   bool = false
+	luxLow         float32
+	luxLowUpdate   bool = false
+	luxHigh        float32
+	luxHighUpdate  bool = false
+	cooldown       float32
+	cooldownUpdate bool = false
 )
 
 func init() {
-	cfgMotionCmd.Flags().Uint16VarP(&thresh, "motion", "m", 0, "set the motion trigger threshold")
+	cfgMotionCmd.Flags().Float32VarP(&thresh, "motion", "m", 0, "set the motion trigger threshold")
 	cfgMotionCmd.Flags().Float32VarP(&luxLow, "luxlow", "l", 0, "set the lux low threshold")
 	cfgMotionCmd.Flags().Float32VarP(&luxHigh, "luxhigh", "t", 0, "set the lux high threshold")
+	cfgMotionCmd.Flags().Float32VarP(&cooldown, "cooldown", "c", 0, "set cooldown period")
 
 	rootCmd.AddCommand(cfgMotionCmd)
 }
@@ -61,6 +64,13 @@ func configMotionHandler(b interface{}) error {
 			}
 		}
 
+		if cooldownUpdate && m.Cooldown() != cooldown {
+			err := m.SetCooldown(cooldown, false)
+			if err != nil {
+				return err
+			}
+		}
+
 		err := m.Sync()
 		if err != nil {
 			return err
@@ -79,6 +89,7 @@ func configMotion(cmd *cobra.Command, args []string) {
 	threshUpdate = cmd.Flags().Changed("motion")
 	luxLowUpdate = cmd.Flags().Changed("luxlow")
 	luxHighUpdate = cmd.Flags().Changed("luxhigh")
+	cooldownUpdate = cmd.Flags().Changed("cooldown")
 
 	m := boards.Motion{}
 

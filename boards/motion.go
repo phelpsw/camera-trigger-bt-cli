@@ -15,9 +15,10 @@ type Motion struct {
 }
 
 var (
-	threshPending  bool = false
-	luxLowPending  bool = false
-	luxHighPending bool = false
+	threshPending   bool = false
+	luxLowPending   bool = false
+	luxHighPending  bool = false
+	cooldownPending bool = false
 )
 
 func (m *Motion) handleBytes(b []byte) error {
@@ -39,14 +40,17 @@ func (m *Motion) handleBytes(b []byte) error {
 		return fmt.Errorf("unexpected message type %+v", msg)
 	}
 
-	if threshPending && m.last.MotionThreshold == m.desired.MotionThreshold {
+	if threshPending && floatEquals(m.last.MotionThreshold, m.desired.MotionThreshold) {
 		threshPending = false
 	}
-	if luxLowPending && m.last.LuxLowThreshold == m.desired.LuxLowThreshold {
+	if luxLowPending && floatEquals(m.last.LuxLowThreshold, m.desired.LuxLowThreshold) {
 		luxLowPending = false
 	}
-	if luxHighPending && m.last.LuxHighThreshold == m.desired.LuxHighThreshold {
+	if luxHighPending && floatEquals(m.last.LuxHighThreshold, m.desired.LuxHighThreshold) {
 		luxHighPending = false
+	}
+	if cooldownPending && floatEquals(m.last.Cooldown, m.desired.Cooldown) {
+		cooldownPending = false
 	}
 
 	if m.callback != nil {
@@ -82,11 +86,11 @@ func (m *Motion) Voltage() float32 {
 	return m.last.Voltage
 }
 
-func (m *Motion) Motion() uint16 {
+func (m *Motion) Motion() float32 {
 	return m.last.Motion
 }
 
-func (m *Motion) MotionThreshold() uint16 {
+func (m *Motion) MotionThreshold() float32 {
 	return m.last.MotionThreshold
 }
 
@@ -120,7 +124,7 @@ func (m *Motion) LogEntries() uint16 {
 	return m.last.LogEntries
 }
 
-func (m *Motion) SetMotionThreshold(thresh uint16, sync bool) error {
+func (m *Motion) SetMotionThreshold(thresh float32, sync bool) error {
 	m.desired.MotionThreshold = thresh
 	threshPending = true
 
@@ -153,17 +157,29 @@ func (m *Motion) SetLuxHighThreshold(thresh float32, sync bool) error {
 	return nil
 }
 
+func (m *Motion) SetCooldown(thresh float32, sync bool) error {
+	m.desired.Cooldown = thresh
+	cooldownPending = true
+
+	if sync {
+		m.Sync()
+	}
+
+	return nil
+}
+
 func (m *Motion) IsSynced() bool {
-	if !threshPending && !luxLowPending && !luxHighPending {
+	if !threshPending && !luxLowPending && !luxHighPending && !cooldownPending {
 		return true
 	}
 	return false
 }
 
 func (m *Motion) Sync() error {
-	if !threshPending && !luxLowPending && !luxHighPending {
+	if m.IsSynced() {
 		return nil
 	}
+
 	if !threshPending {
 		m.desired.MotionThreshold = m.last.MotionThreshold
 	}
@@ -173,10 +189,14 @@ func (m *Motion) Sync() error {
 	if !luxHighPending {
 		m.desired.LuxHighThreshold = m.last.LuxHighThreshold
 	}
+	if !cooldownPending {
+		m.desired.Cooldown = m.last.Cooldown
+	}
 
 	msg := messages.NewMotionSensorConfigMessage(m.desired.MotionThreshold,
 		m.desired.LuxLowThreshold,
-		m.desired.LuxHighThreshold)
+		m.desired.LuxHighThreshold,
+		m.desired.Cooldown)
 
 	if !connection.IsConnected() {
 		return fmt.Errorf("not connected")

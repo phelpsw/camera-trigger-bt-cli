@@ -116,7 +116,7 @@ func triggerLightsHandler(b interface{}) error {
 		if !triggered {
 			m := b.(*boards.Light)
 
-			err := m.Trigger(0, 0)
+			err := m.Trigger(0)
 			triggered = true
 			if err != nil {
 				return err
