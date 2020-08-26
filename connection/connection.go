@@ -30,12 +30,8 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 	callback = _callback
 	connected = false
 
-	var DefaultClientOptions = []gatt.Option{
-		gatt.LnxMaxConnections(1),
-		gatt.LnxDeviceID(-1, false),
-	}
-
 	d, err := gatt.NewDevice(DefaultClientOptions...)
+
 	if err != nil {
 		return fmt.Errorf("failed to open device, err: %s", err)
 	}
