@@ -2,18 +2,19 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:ccccc3fe0afa993052c59b914eb723cea37105b938b506a85aa1bd997b36baa3"
-  name = "github.com/backwardn/gatt"
+  digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
+  name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   pruneopts = "UT"
-  revision = "569d3d9372bb0b4997ff39514ea7b9ad1356dab6"
+  revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+  version = "v1.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:d0a384f9aa4b13a8734ca948b1fb48bfa5acb2111c7ab1db23c311a2adddc53a"
-  name = "github.com/bettercap/gatt"
+  digest = "1:301df3fd43c8a082d16526cc3d53d52ddc2839ddae8c78e071cb65621ff464e9"
+  name = "github.com/photostorm/gatt"
   packages = [
+    ".",
     "linux",
     "linux/cmd",
     "linux/evt",
@@ -23,55 +24,15 @@
     "xpc",
   ]
   pruneopts = "UT"
-  revision = "569d3d9372bb0b4997ff39514ea7b9ad1356dab6"
+  revision = "09da39fbb4f74a4b063335f136de03a89d6d5a3c"
 
 [[projects]]
-  digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
-  name = "github.com/inconshreveable/mousetrap"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
-  version = "v1.0"
-
-[[projects]]
-  digest = "1:0109cf4321a15313ec895f42e723e1f76121c6975ea006abfa20012272ec0937"
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "68e95eba382c972aafde02ead2cd2426a8a92480"
-  version = "v0.1.6"
-
-[[projects]]
-  digest = "1:0c58d31abe2a2ccb429c559b6292e7df89dcda675456fecc282fa90aa08273eb"
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "7b513a986450394f7bbf1476909911b3aa3a55ce"
-  version = "v0.0.12"
-
-[[projects]]
-  branch = "master"
-  digest = "1:2b32af4d2a529083275afc192d1067d8126b578c7a9613b26600e4df9c735155"
-  name = "github.com/mgutz/ansi"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
-
-[[projects]]
-  digest = "1:17bc403348b60bd01bfd2e507fcb23463e76f4b1f433d50b0872b8219df1250d"
-  name = "github.com/mgutz/logxi"
-  packages = ["v1"]
-  pruneopts = "UT"
-  revision = "aebf8a7d67ab4625e0fd4a665766fef9a709161b"
-  version = "v1"
-
-[[projects]]
-  digest = "1:6a13467c76490975b05609344b3d882a9185fd11a44a04ede7427d684e0819b9"
+  digest = "1:1e80255eea46af2e2db7da90f95e4b5cfe84f3b58d9a8598ec35b0f2a75c60e4"
   name = "github.com/spf13/cobra"
   packages = ["."]
   pruneopts = "UT"
-  revision = "0da06874266c88228b8f14615396a1f6bfc90ed7"
-  version = "v0.0.6"
+  revision = "6607e6b8603f56adb027298ee6695e06ffb3a819"
+  version = "0.0.7"
 
 [[projects]]
   digest = "1:524b71991fc7d9246cc7dc2d9e0886ccb97648091c63e30eef619e6862c955dd"
@@ -83,17 +44,20 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3db6d378edb70703966c0eebd90a98884b8a8985c146d07fa15ca7ef6d91fe4c"
+  digest = "1:f39dab930d993596c345ad939b29990fb0e142e62d587615975cc4aad4f6942d"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "internal/unsafeheader",
+    "unix",
+  ]
   pruneopts = "UT"
-  revision = "5766fd39f98ddd8d769ad4aedcee557dd28de90f"
+  revision = "196b9ba8737a10c9253b04174f25881e562da5b8"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/backwardn/gatt",
+    "github.com/photostorm/gatt",
     "github.com/spf13/cobra",
   ]
   solver-name = "gps-cdcl"

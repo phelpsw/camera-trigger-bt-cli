@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/backwardn/gatt"
+	"github.com/photostorm/gatt"
 )
 
 var uartServiceID = gatt.MustParseUUID("49535343-fe7d-4ae5-8fa9-9fafd205e455")

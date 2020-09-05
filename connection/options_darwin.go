@@ -1,5 +1,5 @@
 package connection
 
-import "github.com/backwardn/gatt"
+import "github.com/photostorm/gatt"
 
 var DefaultClientOptions = []gatt.Option{}

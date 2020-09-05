@@ -35,4 +35,4 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/backwardn/gatt"
+  name = "github.com/photostorm/gatt"

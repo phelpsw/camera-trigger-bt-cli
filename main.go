@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"log"
 
-	"github.com/backwardn/gatt"
+	"github.com/photostorm/gatt"
 )
 
 var done = make(chan struct{})
