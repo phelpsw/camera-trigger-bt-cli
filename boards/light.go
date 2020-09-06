@@ -10,6 +10,7 @@ import (
 
 type Light struct {
 	name     string
+	conn     *connection.Connection
 	last     messages.LightStatus
 	desired  messages.LightStatus
 	callback func(interface{}) error
@@ -30,6 +31,25 @@ func floatEquals(a, b float32) bool {
 		return true
 	}
 	return false
+}
+
+func (m *Light) Init(name string, debug bool) error {
+	m.name = name
+
+	m.conn = &connection.Connection{}
+	err := m.conn.Init(name, m.handleBytes, debug)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Light) InitFromBasic(b *Basic) error {
+	m.conn = b.GetConnection()
+	m.conn.Callback(m.handleBytes)
+
+	return nil
 }
 
 func (m *Light) handleBytes(b []byte) error {
@@ -72,17 +92,6 @@ func (m *Light) handleBytes(b []byte) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (m *Light) Init(name string, debug bool) error {
-	m.name = name
-
-	err := connection.Init(name, m.handleBytes, debug)
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -226,7 +235,7 @@ func (m *Light) Sync() error {
 		m.desired.Sustain,
 		m.desired.Release)
 
-	if !connection.IsConnected() {
+	if !m.conn.IsConnected() {
 		return fmt.Errorf("not connected")
 	}
 
@@ -235,7 +244,7 @@ func (m *Light) Sync() error {
 		return err
 	}
 
-	err = connection.WriteBytes(buf)
+	err = m.conn.WriteBytes(buf)
 	if err != nil {
 		return err
 	}
@@ -250,7 +259,7 @@ func (m *Light) Trigger(lux float32) error {
 
 	msg := messages.NewMotionSensorTriggerMessage(lux)
 
-	if !connection.IsConnected() {
+	if !m.conn.IsConnected() {
 		return fmt.Errorf("not connected")
 	}
 
@@ -259,7 +268,7 @@ func (m *Light) Trigger(lux float32) error {
 		return err
 	}
 
-	err = connection.WriteBytes(buf)
+	err = m.conn.WriteBytes(buf)
 	if err != nil {
 		return err
 	}

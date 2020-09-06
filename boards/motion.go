@@ -9,6 +9,7 @@ import (
 
 type Motion struct {
 	name     string
+	conn     *connection.Connection
 	last     messages.MotionSensorStatusMessage
 	desired  messages.MotionSensorConfigMessage
 	callback func(interface{}) error
@@ -20,6 +21,25 @@ var (
 	luxHighPending  bool = false
 	cooldownPending bool = false
 )
+
+func (m *Motion) Init(name string, debug bool) error {
+	m.name = name
+
+	m.conn = &connection.Connection{}
+	err := m.conn.Init(name, m.handleBytes, debug)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Motion) InitFromBasic(b *Basic) error {
+	m.conn = b.GetConnection()
+	m.conn.Callback(m.handleBytes)
+
+	return nil
+}
 
 func (m *Motion) handleBytes(b []byte) error {
 	msg, err := messages.ReadMessage(b)
@@ -58,17 +78,6 @@ func (m *Motion) handleBytes(b []byte) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (m *Motion) Init(name string, debug bool) error {
-	m.name = name
-
-	err := connection.Init(name, m.handleBytes, debug)
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -198,7 +207,7 @@ func (m *Motion) Sync() error {
 		m.desired.LuxHighThreshold,
 		m.desired.Cooldown)
 
-	if !connection.IsConnected() {
+	if !m.conn.IsConnected() {
 		return fmt.Errorf("not connected")
 	}
 
@@ -207,7 +216,7 @@ func (m *Motion) Sync() error {
 		return err
 	}
 
-	err = connection.WriteBytes(buf)
+	err = m.conn.WriteBytes(buf)
 	if err != nil {
 		return err
 	}

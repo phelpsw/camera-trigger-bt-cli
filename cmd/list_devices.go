@@ -17,5 +17,6 @@ var listCmd = &cobra.Command{
 }
 
 func list(cmd *cobra.Command, args []string) {
-	connection.Scan()
+	var conn connection.Connection
+	conn.Scan()
 }

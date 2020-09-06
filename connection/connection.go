@@ -18,7 +18,7 @@ var uartServiceTXCharID = ble.MustParse("495353431e4d4bd9ba6123c647249616")
 
 type readBytesCallbackType func(b []byte) error
 
-var curr struct {
+type Connection struct {
 	device                ble.Device
 	client                ble.Client
 	receiveCharacteristic *ble.Characteristic
@@ -27,7 +27,7 @@ var curr struct {
 	connected             bool
 }
 
-func setup() error {
+func (curr *Connection) setup() error {
 	if curr.device != nil {
 		return nil
 	}
@@ -83,8 +83,8 @@ func chkErr(err error) error {
 }
 
 // Scan for eligible devices and print details when they are found
-func Scan() error {
-	err := setup()
+func (curr *Connection) Scan() error {
+	err := curr.setup()
 	if err != nil {
 		return err
 	}
@@ -94,13 +94,18 @@ func Scan() error {
 	return chkErr(ble.Scan(ctx, allowDuplicates, advHandler, advFilter()))
 }
 
+// Set the callback to be used when receiving bytes
+func (curr *Connection) Callback(_callback readBytesCallbackType) {
+	curr.callback = _callback
+}
+
 // Init a connection to the a bluetooth device with the specified name.
-func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
+func (curr *Connection) Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 	curr.debug = _debug
 	curr.callback = _callback
 	curr.connected = false
 
-	err := setup()
+	err := curr.setup()
 	if err != nil {
 		return err
 	}
@@ -148,7 +153,7 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 			for _, c := range s.Characteristics {
 				if (c.Property & ble.CharNotify) != 0 {
 					if c.UUID.Equal(uartServiceTXCharID) {
-						if err := cln.Subscribe(c, false, readBytes); err != nil {
+						if err := cln.Subscribe(c, false, curr.readBytes); err != nil {
 							log.Fatalf("subscribe failed: %s", err)
 						}
 					}
@@ -168,18 +173,18 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 }
 
 // Stop the connection
-func Stop() {
+func (curr *Connection) Stop() {
 	if curr.client != nil {
 		curr.client.CancelConnection()
 	}
 }
 
 // IsConnected indicates whether a connection is present
-func IsConnected() bool {
+func (curr *Connection) IsConnected() bool {
 	return curr.connected
 }
 
-func WriteBytes(b *bytes.Buffer) error {
+func (curr *Connection) WriteBytes(b *bytes.Buffer) error {
 	if curr.debug {
 		fmt.Printf("TX %d bytes: ", b.Len())
 
@@ -193,7 +198,7 @@ func WriteBytes(b *bytes.Buffer) error {
 	return errors.Wrap(err, "can't write characteristic")
 }
 
-func readBytes(b []byte) {
+func (curr *Connection) readBytes(b []byte) {
 	if curr.debug {
 		fmt.Printf("RX %d bytes: ", len(b))
 		for i := 0; i < len(b); i++ {

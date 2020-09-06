@@ -2,6 +2,7 @@ package boards
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/phelpsw/camera-trigger-bt-cli/connection"
 	"github.com/phelpsw/camera-trigger-bt-cli/messages"
@@ -17,16 +18,40 @@ type Generic interface {
 	GetLog(index uint16) error
 	ResetLog() error
 	SetTime() error
+
+	PrintStatus() error
 }
 
 type Basic struct {
 	name           string
+	conn           *connection.Connection
+	observedType   interface{}
 	logCount       uint16
 	statusCallback func(interface{}) error
 	logCallback    func(*Basic) error
-	connected      bool
 
 	logMessages []messages.LogResponseMessage
+}
+
+func (m *Basic) Init(name string, debug bool) error {
+	m.name = name
+	m.observedType = nil
+
+	m.conn = &connection.Connection{}
+	err := m.conn.Init(name, m.handleBytes, debug)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Basic) GetType() interface{} {
+	return m.observedType
+}
+
+func (m *Basic) GetConnection() *connection.Connection {
+	return m.conn
 }
 
 func (m *Basic) handleBytes(b []byte) error {
@@ -42,44 +67,9 @@ func (m *Basic) handleBytes(b []byte) error {
 
 	switch msg.(type) {
 	case messages.MotionSensorStatusMessage:
-		fmt.Printf("%+v\n", msg.(messages.MotionSensorStatusMessage))
-		val := msg.(messages.MotionSensorStatusMessage)
-		m.logCount = val.LogEntries
-
-		if m.statusCallback != nil {
-			err = m.statusCallback(m)
-			if err != nil {
-				return err
-			}
-		}
-
-		m.connected = true
+		m.observedType = reflect.TypeOf(Motion{})
 	case messages.LightStatusMessage:
-		fmt.Printf("%+v\n", msg.(messages.LightStatusMessage))
-		val := msg.(messages.LightStatusMessage)
-		m.logCount = val.Payload.LogEntries
-
-		if m.statusCallback != nil {
-			err = m.statusCallback(m)
-			if err != nil {
-				return err
-			}
-		}
-
-		m.connected = true
-	case messages.LogResponseMessage:
-		fmt.Printf("%+v\n", msg.(messages.LogResponseMessage))
-		m.logMessages = append(m.logMessages, msg.(messages.LogResponseMessage))
-
-		if m.logCallback != nil {
-			err = m.logCallback(m)
-			if err != nil {
-				return err
-			}
-		}
-	default:
-		fmt.Println("Unknown")
-		return fmt.Errorf("unexpected message type %+v", msg)
+		m.observedType = reflect.TypeOf(Light{})
 	}
 
 	if m.statusCallback != nil {
@@ -92,20 +82,8 @@ func (m *Basic) handleBytes(b []byte) error {
 	return nil
 }
 
-func (m *Basic) Init(name string, debug bool) error {
-	m.connected = false
-	m.name = name
-
-	err := connection.Init(name, m.handleBytes, debug)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (m *Basic) IsConnected() bool {
-	return m.connected
+	return m.conn.IsConnected()
 }
 
 func (m *Basic) LogEntries() uint16 {
@@ -119,7 +97,7 @@ func (m *Basic) Log() []messages.LogResponseMessage {
 func (m *Basic) GetLog(index uint16) error {
 	msg := messages.NewLogRequestMessage(index)
 
-	if !connection.IsConnected() {
+	if !m.conn.IsConnected() {
 		return fmt.Errorf("not connected")
 	}
 
@@ -128,7 +106,7 @@ func (m *Basic) GetLog(index uint16) error {
 		return err
 	}
 
-	err = connection.WriteBytes(buf)
+	err = m.conn.WriteBytes(buf)
 	if err != nil {
 		return err
 	}
@@ -139,7 +117,7 @@ func (m *Basic) GetLog(index uint16) error {
 func (m *Basic) ResetLog() error {
 	msg := messages.NewLogResetMessage()
 
-	if !connection.IsConnected() {
+	if !m.conn.IsConnected() {
 		return fmt.Errorf("not connected")
 	}
 
@@ -148,7 +126,7 @@ func (m *Basic) ResetLog() error {
 		return err
 	}
 
-	err = connection.WriteBytes(buf)
+	err = m.conn.WriteBytes(buf)
 	if err != nil {
 		return err
 	}
@@ -159,7 +137,7 @@ func (m *Basic) ResetLog() error {
 func (m *Basic) SetTime(cal messages.Calendar) error {
 	msg := messages.NewSetTimeMessage(cal)
 
-	if !connection.IsConnected() {
+	if !m.conn.IsConnected() {
 		return fmt.Errorf("not connected")
 	}
 
@@ -168,7 +146,7 @@ func (m *Basic) SetTime(cal messages.Calendar) error {
 		return err
 	}
 
-	err = connection.WriteBytes(buf)
+	err = m.conn.WriteBytes(buf)
 	if err != nil {
 		return err
 	}
