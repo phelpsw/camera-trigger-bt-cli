@@ -31,22 +31,20 @@ func setup() error {
 	if curr.device != nil {
 		return nil
 	}
-	fmt.Printf("Initializing device ...\n")
+	fmt.Printf("Initializing interface...")
 	d, err := dev.NewDevice("default")
 	if err != nil {
 		return errors.Wrap(err, "can't init new device")
 	}
 	ble.SetDefaultDevice(d)
 	curr.device = d
+	fmt.Printf("complete\n")
 	return nil
 }
 
 func advHandler(a ble.Advertisement) {
-	//curr.addr = a.Addr()
 	if a.Connectable() {
-		fmt.Printf("[%s]     Connectable %3d:", a.Addr(), a.RSSI())
-	} else {
-		fmt.Printf("[%s] Not Connectable %3d:", a.Addr(), a.RSSI())
+		fmt.Printf("[%s]     Connectable %3d dBm:", a.Addr(), a.RSSI())
 	}
 	comma := ""
 	if len(a.LocalName()) > 0 {
@@ -62,37 +60,20 @@ func advHandler(a ble.Advertisement) {
 	}
 
 	fmt.Printf("\n")
-	for _, s := range a.Services() {
-
-		fmt.Println(s.String())
-	}
-
-	for _, s := range a.ServiceData() {
-		fmt.Println(s.UUID)
-		fmt.Println(s.Data)
-	}
 }
 
 func advFilter() ble.AdvFilter {
 	return func(a ble.Advertisement) bool {
-		return true
-	}
-	/*
-		return func(a ble.Advertisement) bool {
-			for _, s := range a.Services() {
-				if s.Equal(uartServiceID) {
-					return true
-				}
-			}
-			return false
+		if strings.HasPrefix(a.LocalName(), "camera-trigger-") {
+			return true
 		}
-	*/
+		return false
+	}
 }
 
 func chkErr(err error) error {
 	switch errors.Cause(err) {
 	case context.DeadlineExceeded:
-		// Sepcified duration passed, which is the expected case.
 		return nil
 	case context.Canceled:
 		fmt.Printf("\n(Canceled)\n")
@@ -101,6 +82,7 @@ func chkErr(err error) error {
 	return err
 }
 
+// Scan for eligible devices and print details when they are found
 func Scan() error {
 	err := setup()
 	if err != nil {
@@ -118,11 +100,10 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 	curr.callback = _callback
 	curr.connected = false
 
-	d, err := DefaultDevice()
+	err := setup()
 	if err != nil {
-		return fmt.Errorf("failed to open device, err: %s", err)
+		return err
 	}
-	ble.SetDefaultDevice(d)
 
 	// Default to search device with name specified by user
 	filter := func(a ble.Advertisement) bool {
@@ -147,48 +128,39 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 		close(done)
 	}()
 
-	fmt.Printf("Discovering profile...\n")
+	fmt.Printf("Discovering profile...")
 	p, err := cln.DiscoverProfile(true)
 	if err != nil {
 		log.Fatalf("can't discover profile: %s", err)
 	}
+	fmt.Printf("complete\n")
 
 	for _, s := range p.Services {
-		fmt.Printf("    Service: %s %s, Handle (0x%02X)\n", s.UUID, ble.Name(s.UUID), s.Handle)
-		for _, c := range s.Characteristics {
-			fmt.Printf("      Characteristic: %s %s, Property: 0x%02X (%s), Handle(0x%02X), VHandle(0x%02X)\n",
-				c.UUID, ble.Name(c.UUID), c.Property, propString(c.Property), c.Handle, c.ValueHandle)
+		if curr.debug {
+			fmt.Printf("    Service: %s %s, Handle (0x%02X)\n", s.UUID, ble.Name(s.UUID), s.Handle)
+			for _, c := range s.Characteristics {
+				fmt.Printf("      Characteristic: %s %s, Property: 0x%02X (%s), Handle(0x%02X), VHandle(0x%02X)\n",
+					c.UUID, ble.Name(c.UUID), c.Property, propString(c.Property), c.Handle, c.ValueHandle)
+			}
 		}
 
 		if s.UUID.Equal(uartServiceID) {
 			for _, c := range s.Characteristics {
-				// Validate this property supports notifies
 				if (c.Property & ble.CharNotify) != 0 {
 					if c.UUID.Equal(uartServiceTXCharID) {
 						if err := cln.Subscribe(c, false, readBytes); err != nil {
 							log.Fatalf("subscribe failed: %s", err)
 						}
-						//rxCfg = true
 					}
 				}
 
 				if c.UUID.Equal(uartServiceRXCharID) {
 					curr.receiveCharacteristic = c
-					//txCfg = true
 				}
 			}
 		}
 	}
 
-	/*
-		d.Handle(
-			gatt.PeripheralDiscovered(onPeriphDiscovered),
-			gatt.PeripheralConnected(onPeriphConnected),
-			gatt.PeripheralDisconnected(onPeriphDisconnected),
-		)
-
-		d.Init(onStateChanged)
-	*/
 	curr.client = cln
 	curr.connected = true
 
@@ -221,72 +193,7 @@ func WriteBytes(b *bytes.Buffer) error {
 	return errors.Wrap(err, "can't write characteristic")
 }
 
-/*
-func onStateChanged(d gatt.Device, s gatt.State) {
-	log.Printf("State: %v", s)
-	switch s {
-	case gatt.StatePoweredOn:
-		log.Println("scanning...")
-		d.Scan([]gatt.UUID{}, false)
-		return
-	default:
-		d.StopScanning()
-	}
-}
-
-func onPeriphDiscovered(p gatt.Peripheral, a *gatt.Advertisement, rssi int) {
-	if strings.HasPrefix(a.LocalName, "camera-trigger-") {
-		log.Printf("Discovered %s RSSI %d\n", a.LocalName, rssi)
-
-		if a.LocalName == remoteName {
-			p.Device().StopScanning()
-			p.Device().Connect(p)
-		}
-	}
-	return
-}
-
-func onPeriphConnected(p gatt.Peripheral, err error) {
-	services, err := p.DiscoverServices(nil)
-	if err != nil {
-		log.Fatalf("Failed to discover services, err: %s\n", err)
-		return
-	}
-
-	rxCfg := false
-	txCfg := false
-	for _, service := range services {
-		if service.UUID().Equal(uartServiceID) {
-			cs, _ := p.DiscoverCharacteristics(nil, service)
-			for _, c := range cs {
-				if c.UUID().Equal(uartServiceTXCharID) {
-					p.DiscoverDescriptors(nil, c)
-					p.SetNotifyValue(c, readBytes)
-					rxCfg = true
-				} else if c.UUID().Equal(uartServiceRXCharID) {
-					devicePeripheral = p
-					receiveCharacteristic = c
-					txCfg = true
-				}
-			}
-		}
-	}
-
-	if rxCfg && txCfg {
-		connected = true
-	}
-
-	return
-}
-*/
 func readBytes(b []byte) {
-	/*
-		if e != nil {
-			log.Printf("Connection packet handling error\n")
-			log.Printf("%+v", e)
-			return
-		}
-	*/
 	if curr.debug {
 		fmt.Printf("RX %d bytes: ", len(b))
 		for i := 0; i < len(b); i++ {
@@ -301,16 +208,7 @@ func readBytes(b []byte) {
 			log.Printf("Callback handling error: %s\n", err)
 		}
 	}
-
-	return
 }
-
-/*
-func onPeriphDisconnected(p gatt.Peripheral, err error) {
-	log.Println("Disconnected")
-	connected = false
-}
-*/
 
 func propString(p ble.Property) string {
 	var s string
