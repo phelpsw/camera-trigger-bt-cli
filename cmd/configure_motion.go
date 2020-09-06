@@ -71,10 +71,8 @@ func configMotionHandler(b interface{}) error {
 			}
 		}
 
-		err := m.Sync()
-		if err != nil {
-			return err
-		}
+		// This needs to be done asynchronously otherwise it will deadlock
+		go m.Sync()
 
 		if m.IsSynced() {
 			close(motionDone)

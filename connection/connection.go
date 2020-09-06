@@ -21,6 +21,7 @@ type readBytesCallbackType func(b []byte) error
 type Connection struct {
 	device                ble.Device
 	client                ble.Client
+	profile               *ble.Profile
 	receiveCharacteristic *ble.Characteristic
 	debug                 bool
 	callback              readBytesCallbackType
@@ -32,12 +33,12 @@ func (curr *Connection) setup() error {
 		return nil
 	}
 	fmt.Printf("Initializing interface...")
-	d, err := dev.NewDevice("default")
+	var err error
+	curr.device, err = dev.NewDevice("default")
 	if err != nil {
 		return errors.Wrap(err, "can't init new device")
 	}
-	ble.SetDefaultDevice(d)
-	curr.device = d
+	ble.SetDefaultDevice(curr.device)
 	fmt.Printf("complete\n")
 	return nil
 }
@@ -99,74 +100,91 @@ func (curr *Connection) Callback(_callback readBytesCallbackType) {
 	curr.callback = _callback
 }
 
+func (curr *Connection) connect(name string) error {
+	curr.client = nil
+
+	var cln ble.Client
+	var err error
+
+	// Default to search device with name specified by user
+	filter := func(a ble.Advertisement) bool {
+		return strings.ToUpper(a.LocalName()) == strings.ToUpper(name)
+	}
+
+	ctx := ble.WithSigHandler(context.WithCancel(context.Background()))
+	if cln, err = ble.Connect(ctx, filter); err == nil {
+		fmt.Printf("Connected to %s [%s]\n", name, cln.Addr())
+	}
+
+	if err == nil {
+		curr.client = cln
+
+		// Make sure we had the chance to print out the disconnected message.
+		done := make(chan struct{})
+		go func() {
+			<-cln.Disconnected()
+			curr.client = nil
+			curr.connected = false
+			fmt.Printf("\n%s disconnected\n", cln.Addr().String())
+			close(done)
+		}()
+	}
+	return err
+}
+
 // Init a connection to the a bluetooth device with the specified name.
 func (curr *Connection) Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 	curr.debug = _debug
 	curr.callback = _callback
 	curr.connected = false
 
-	err := curr.setup()
-	if err != nil {
+	if err := curr.setup(); err != nil {
 		return err
 	}
 
-	// Default to search device with name specified by user
-	filter := func(a ble.Advertisement) bool {
-		return strings.ToUpper(a.LocalName()) == strings.ToUpper(_device)
+	if err := curr.connect(_device); err != nil {
+		return err
 	}
-
-	ctx := ble.WithSigHandler(context.WithCancel(context.Background()))
-	cln, err := ble.Connect(ctx, filter)
-	if err != nil {
-		log.Fatalf("cannot connect : %s", err)
-	}
-
-	// Make sure we had the chance to print out the message.
-	done := make(chan struct{})
-	// Normally, the connection is disconnected by us after our exploration.
-	// However, it can be asynchronously disconnected by the remote peripheral.
-	// So we wait(detect) the disconnection in the go routine.
-	go func() {
-		<-cln.Disconnected()
-		curr.connected = false
-		fmt.Printf("[ %s ] is disconnected \n", cln.Addr())
-		close(done)
-	}()
 
 	fmt.Printf("Discovering profile...")
-	p, err := cln.DiscoverProfile(true)
+	p, err := curr.client.DiscoverProfile(true)
 	if err != nil {
 		log.Fatalf("can't discover profile: %s", err)
 	}
+	curr.profile = p
 	fmt.Printf("complete\n")
 
-	for _, s := range p.Services {
-		if curr.debug {
+	if curr.debug {
+		for _, s := range curr.profile.Services {
 			fmt.Printf("    Service: %s %s, Handle (0x%02X)\n", s.UUID, ble.Name(s.UUID), s.Handle)
 			for _, c := range s.Characteristics {
 				fmt.Printf("      Characteristic: %s %s, Property: 0x%02X (%s), Handle(0x%02X), VHandle(0x%02X)\n",
 					c.UUID, ble.Name(c.UUID), c.Property, propString(c.Property), c.Handle, c.ValueHandle)
 			}
 		}
-
-		if s.UUID.Equal(uartServiceID) {
-			for _, c := range s.Characteristics {
-				if (c.Property & ble.CharNotify) != 0 {
-					if c.UUID.Equal(uartServiceTXCharID) {
-						if err := cln.Subscribe(c, false, curr.readBytes); err != nil {
-							log.Fatalf("subscribe failed: %s", err)
-						}
-					}
-				}
-
-				if c.UUID.Equal(uartServiceRXCharID) {
-					curr.receiveCharacteristic = c
-				}
-			}
-		}
 	}
 
-	curr.client = cln
+	if u := curr.profile.Find(ble.NewCharacteristic(uartServiceTXCharID)); u != nil {
+		if curr.debug {
+			fmt.Println("Found TX Characteristic")
+		}
+		indication := false
+		if err := curr.client.Subscribe(u.(*ble.Characteristic), indication, curr.readBytes); err != nil {
+			log.Fatalf("subscribe failed: %s", err)
+		}
+	} else if u == nil {
+		return fmt.Errorf("Could not find TX Characteristic")
+	}
+
+	if u := curr.profile.Find(ble.NewCharacteristic(uartServiceRXCharID)); u != nil {
+		if curr.debug {
+			fmt.Println("Found RX Characteristic")
+		}
+		curr.receiveCharacteristic = u.(*ble.Characteristic)
+	} else if u == nil {
+		return fmt.Errorf("Could not find RX Characteristic")
+	}
+
 	curr.connected = true
 
 	return nil
@@ -194,8 +212,13 @@ func (curr *Connection) WriteBytes(b *bytes.Buffer) error {
 		fmt.Printf("\n")
 	}
 
-	err := curr.client.WriteCharacteristic(curr.receiveCharacteristic, b.Bytes(), true)
-	return errors.Wrap(err, "can't write characteristic")
+	var noResp bool = true
+	err := curr.client.WriteCharacteristic(curr.receiveCharacteristic, b.Bytes(), noResp)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (curr *Connection) readBytes(b []byte) {

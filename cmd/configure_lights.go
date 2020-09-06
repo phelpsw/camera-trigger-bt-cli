@@ -95,10 +95,7 @@ func configLightsHandler(b interface{}) error {
 			}
 		}
 
-		err := m.Sync()
-		if err != nil {
-			return err
-		}
+		go m.Sync()
 
 		if m.IsSynced() {
 			close(lightsDone)
