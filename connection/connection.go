@@ -6,39 +6,119 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/JuulLabs-OSS/ble"
+	"github.com/JuulLabs-OSS/ble/examples/lib/dev"
 	"github.com/pkg/errors"
 )
 
 var uartServiceID = ble.MustParse("49535343fe7d4ae58fa99fafd205e455")
 var uartServiceRXCharID = ble.MustParse("49535343884143f4a8d4ecbe34729bb3")
 var uartServiceTXCharID = ble.MustParse("495353431e4d4bd9ba6123c647249616")
-var client ble.Client
-var receiveCharacteristic *ble.Characteristic
-var remoteName string
-var debug bool
 
 type readBytesCallbackType func(b []byte) error
 
-var callback readBytesCallbackType
-var connected bool
+var curr struct {
+	device                ble.Device
+	client                ble.Client
+	receiveCharacteristic *ble.Characteristic
+	debug                 bool
+	callback              readBytesCallbackType
+	connected             bool
+}
 
-// NewDevice ...
-func NewDevice(impl string, opts ...ble.Option) (d ble.Device, err error) {
-	return DefaultDevice(opts...)
+func setup() error {
+	if curr.device != nil {
+		return nil
+	}
+	fmt.Printf("Initializing device ...\n")
+	d, err := dev.NewDevice("default")
+	if err != nil {
+		return errors.Wrap(err, "can't init new device")
+	}
+	ble.SetDefaultDevice(d)
+	curr.device = d
+	return nil
+}
+
+func advHandler(a ble.Advertisement) {
+	//curr.addr = a.Addr()
+	if a.Connectable() {
+		fmt.Printf("[%s]     Connectable %3d:", a.Addr(), a.RSSI())
+	} else {
+		fmt.Printf("[%s] Not Connectable %3d:", a.Addr(), a.RSSI())
+	}
+	comma := ""
+	if len(a.LocalName()) > 0 {
+		fmt.Printf(" Name: %s", a.LocalName())
+		comma = ","
+	}
+	if len(a.Services()) > 0 {
+		fmt.Printf("%s Svcs: %v", comma, a.Services())
+		comma = ","
+	}
+	if len(a.ManufacturerData()) > 0 {
+		fmt.Printf("%s MD: %X", comma, a.ManufacturerData())
+	}
+
+	fmt.Printf("\n")
+	for _, s := range a.Services() {
+
+		fmt.Println(s.String())
+	}
+
+	for _, s := range a.ServiceData() {
+		fmt.Println(s.UUID)
+		fmt.Println(s.Data)
+	}
+}
+
+func advFilter() ble.AdvFilter {
+	return func(a ble.Advertisement) bool {
+		return true
+	}
+	/*
+		return func(a ble.Advertisement) bool {
+			for _, s := range a.Services() {
+				if s.Equal(uartServiceID) {
+					return true
+				}
+			}
+			return false
+		}
+	*/
+}
+
+func chkErr(err error) error {
+	switch errors.Cause(err) {
+	case context.DeadlineExceeded:
+		// Sepcified duration passed, which is the expected case.
+		return nil
+	case context.Canceled:
+		fmt.Printf("\n(Canceled)\n")
+		return nil
+	}
+	return err
+}
+
+func Scan() error {
+	err := setup()
+	if err != nil {
+		return err
+	}
+
+	var allowDuplicates bool = false
+	ctx := ble.WithSigHandler(context.WithCancel(context.Background()))
+	return chkErr(ble.Scan(ctx, allowDuplicates, advHandler, advFilter()))
 }
 
 // Init a connection to the a bluetooth device with the specified name.
 func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
-	remoteName = _device
-	debug = _debug
-	callback = _callback
-	connected = false
+	curr.debug = _debug
+	curr.callback = _callback
+	curr.connected = false
 
-	deviceName := "default"
-	d, err := NewDevice(deviceName)
+	d, err := DefaultDevice()
 	if err != nil {
 		return fmt.Errorf("failed to open device, err: %s", err)
 	}
@@ -49,14 +129,10 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 		return strings.ToUpper(a.LocalName()) == strings.ToUpper(_device)
 	}
 
-	// Scan duration in seconds, 0 scans forever
-	var scanDuration time.Duration = 10 * time.Second
-	// Scan for specified durantion, or until interrupted by user.
-	fmt.Printf("Scanning for %s sec...\n", scanDuration)
-	ctx := ble.WithSigHandler(context.WithTimeout(context.Background(), scanDuration))
+	ctx := ble.WithSigHandler(context.WithCancel(context.Background()))
 	cln, err := ble.Connect(ctx, filter)
 	if err != nil {
-		log.Fatalf("can't connect : %s", err)
+		log.Fatalf("cannot connect : %s", err)
 	}
 
 	// Make sure we had the chance to print out the message.
@@ -66,7 +142,7 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 	// So we wait(detect) the disconnection in the go routine.
 	go func() {
 		<-cln.Disconnected()
-		connected = false
+		curr.connected = false
 		fmt.Printf("[ %s ] is disconnected \n", cln.Addr())
 		close(done)
 	}()
@@ -84,7 +160,7 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 				c.UUID, ble.Name(c.UUID), c.Property, propString(c.Property), c.Handle, c.ValueHandle)
 		}
 
-		if s.UUID.Equal(uartServiceID) { // Not sure if byte[] have .Equal operator
+		if s.UUID.Equal(uartServiceID) {
 			for _, c := range s.Characteristics {
 				// Validate this property supports notifies
 				if (c.Property & ble.CharNotify) != 0 {
@@ -97,7 +173,7 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 				}
 
 				if c.UUID.Equal(uartServiceRXCharID) {
-					receiveCharacteristic = c
+					curr.receiveCharacteristic = c
 					//txCfg = true
 				}
 			}
@@ -113,26 +189,26 @@ func Init(_device string, _callback readBytesCallbackType, _debug bool) error {
 
 		d.Init(onStateChanged)
 	*/
-	client = cln
-	connected = true
+	curr.client = cln
+	curr.connected = true
 
 	return nil
 }
 
 // Stop the connection
 func Stop() {
-	if client != nil {
-		client.CancelConnection()
+	if curr.client != nil {
+		curr.client.CancelConnection()
 	}
 }
 
 // IsConnected indicates whether a connection is present
 func IsConnected() bool {
-	return connected
+	return curr.connected
 }
 
 func WriteBytes(b *bytes.Buffer) error {
-	if debug {
+	if curr.debug {
 		fmt.Printf("TX %d bytes: ", b.Len())
 
 		for i := 0; i < b.Len(); i++ {
@@ -141,7 +217,7 @@ func WriteBytes(b *bytes.Buffer) error {
 		fmt.Printf("\n")
 	}
 
-	err := client.WriteCharacteristic(receiveCharacteristic, b.Bytes(), true)
+	err := curr.client.WriteCharacteristic(curr.receiveCharacteristic, b.Bytes(), true)
 	return errors.Wrap(err, "can't write characteristic")
 }
 
@@ -211,7 +287,7 @@ func readBytes(b []byte) {
 			return
 		}
 	*/
-	if debug {
+	if curr.debug {
 		fmt.Printf("RX %d bytes: ", len(b))
 		for i := 0; i < len(b); i++ {
 			fmt.Printf("0x%.2x, ", b[i])
@@ -219,8 +295,8 @@ func readBytes(b []byte) {
 		fmt.Printf("\n")
 	}
 
-	if callback != nil {
-		err := callback(b)
+	if curr.callback != nil {
+		err := curr.callback(b)
 		if err != nil {
 			log.Printf("Callback handling error: %s\n", err)
 		}
