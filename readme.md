@@ -8,7 +8,6 @@ A CLI tool for interacting with camera trigger devices over bluetooth.
 ### Building
 ```
 brew install golang
-brew install dep
 
 # setup GOPATH
 mkdir -p $HOME/go/{bin,src}
@@ -20,7 +19,6 @@ cd $HOME/go/src/github.com/phelpsw/
 git clone https://github.com/phelpsw/camera-trigger-bt-cli.git
 cd camera-trigger-bt-cli
 
-dep ensure
 go build
 ```
 
@@ -43,7 +41,7 @@ go build
 ## Linux
 ### Building
 ```
-sudo apt-get install golang go-dep
+sudo apt-get install golang
 
 # setup GOPATH
 mkdir -p $HOME/go/{bin,src}
@@ -55,6 +53,5 @@ cd $HOME/go/src/github.com/phelpsw/
 git clone https://github.com/phelpsw/camera-trigger-bt-cli.git
 cd camera-trigger-bt-cli
 
-dep ensure
 go build
 ```
