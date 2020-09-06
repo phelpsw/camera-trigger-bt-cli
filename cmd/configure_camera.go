@@ -11,7 +11,7 @@ func init() {
 }
 
 var cameraCmd = &cobra.Command{
-	Use:   "cmdcamera",
+	Use:   "triggercamera",
 	Short: "Trigger Camera",
 	Long:  "Trigger Camera",
 	Run: func(cmd *cobra.Command, args []string) {
