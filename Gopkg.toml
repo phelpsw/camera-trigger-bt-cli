@@ -35,4 +35,4 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/photostorm/gatt"
+  name = "github.com/JuulLabs-OSS/ble"

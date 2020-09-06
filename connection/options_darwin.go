@@ -1,5 +1,11 @@
 package connection
 
-import "github.com/photostorm/gatt"
+import (
+	"github.com/JuulLabs-OSS/ble"
+	"github.com/JuulLabs-OSS/ble/darwin"
+)
 
-var DefaultClientOptions = []gatt.Option{}
+// DefaultDevice ...
+func DefaultDevice(opts ...ble.Option) (d ble.Device, err error) {
+	return darwin.NewDevice(opts...)
+}

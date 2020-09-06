@@ -1,8 +1,11 @@
 package connection
 
-import "github.com/photostorm/gatt"
+import (
+	"github.com/JuulLabs-OSS/ble"
+	"github.com/JuulLabs-OSS/ble/linux"
+)
 
-var DefaultClientOptions = []gatt.Option{
-	gatt.LnxMaxConnections(1),
-	gatt.LnxDeviceID(-1, false),
+// DefaultDevice ...
+func DefaultDevice(opts ...ble.Option) (d ble.Device, err error) {
+	return linux.NewDevice(opts...)
 }

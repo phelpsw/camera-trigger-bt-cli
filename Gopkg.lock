@@ -2,6 +2,33 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:1b1bc28820e75a058434778027558ce8560de421ce5240792f598496653cb738"
+  name = "github.com/JuulLabs-OSS/ble"
+  packages = [
+    ".",
+    "darwin",
+    "linux",
+    "linux/adv",
+    "linux/att",
+    "linux/gatt",
+    "linux/hci",
+    "linux/hci/cmd",
+    "linux/hci/evt",
+    "linux/hci/socket",
+  ]
+  pruneopts = "UT"
+  revision = "d4fcc9d598bb37aada98a2cf5fcb376cbefa5b63"
+
+[[projects]]
+  digest = "1:f68ac64d57c3aaf732a5b2ddd65a33a3fc5e56c496bd0c71d83679fe3410e16e"
+  name = "github.com/JuulLabs-OSS/cbgo"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "4927cafec1a31a039e0675fa8871686fa3c57e06"
+  version = "v0.0.2"
+
+[[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
@@ -10,21 +37,68 @@
   version = "v1.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:301df3fd43c8a082d16526cc3d53d52ddc2839ddae8c78e071cb65621ff464e9"
-  name = "github.com/photostorm/gatt"
-  packages = [
-    ".",
-    "linux",
-    "linux/cmd",
-    "linux/evt",
-    "linux/gioctl",
-    "linux/socket",
-    "linux/util",
-    "xpc",
-  ]
+  digest = "1:09cb61dc19af93deae01587e2fdb1c081e0bf48f1a5ad5fa24f48750dc57dce8"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
   pruneopts = "UT"
-  revision = "09da39fbb4f74a4b063335f136de03a89d6d5a3c"
+  revision = "edb144dfd453055e1e49a3d8b410a660b5a87613"
+  version = "v1.0.3"
+
+[[projects]]
+  digest = "1:864f9b9a3bc9255934cbb5e94d5f761d726085894915403289fbae6fb3415f98"
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f6c00982823144337e56cdb71c712eaac151d29c"
+  version = "v0.1.7"
+
+[[projects]]
+  digest = "1:0c58d31abe2a2ccb429c559b6292e7df89dcda675456fecc282fa90aa08273eb"
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7b513a986450394f7bbf1476909911b3aa3a55ce"
+  version = "v0.0.12"
+
+[[projects]]
+  branch = "master"
+  digest = "1:156ffa10bf53a39da78ff667c0084fd09d87b2345708d697f6faa45b7571dfa4"
+  name = "github.com/mgutz/ansi"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d51e80ef957dba7f19388ca64afefbd5a096af30"
+
+[[projects]]
+  digest = "1:17bc403348b60bd01bfd2e507fcb23463e76f4b1f433d50b0872b8219df1250d"
+  name = "github.com/mgutz/logxi"
+  packages = ["v1"]
+  pruneopts = "UT"
+  revision = "aebf8a7d67ab4625e0fd4a665766fef9a709161b"
+  version = "v1"
+
+[[projects]]
+  digest = "1:9e1d37b58d17113ec3cb5608ac0382313c5b59470b94ed97d0976e69c7022314"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "614d223910a179a466c1767a985424175c39b465"
+  version = "v0.9.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:40413729933abf423250afb8c1565a42b2a19302082a9c2d0a07efee690c6a13"
+  name = "github.com/raff/goble"
+  packages = ["xpc"]
+  pruneopts = "UT"
+  revision = "d63360dcfd800cf9c60c5f917b9f6bd035b37854"
+
+[[projects]]
+  digest = "1:05eebdd5727fea23083fce0d98d307d70c86baed644178e81608aaa9f09ea469"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "60c74ad9be0d874af0ab0daef6ab07c5c5911f0d"
+  version = "v1.6.0"
 
 [[projects]]
   digest = "1:1e80255eea46af2e2db7da90f95e4b5cfe84f3b58d9a8598ec35b0f2a75c60e4"
@@ -51,13 +125,15 @@
     "unix",
   ]
   pruneopts = "UT"
-  revision = "196b9ba8737a10c9253b04174f25881e562da5b8"
+  revision = "be1d3432aa8f4fd677757447c4c9e7ff9bf25f73"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/photostorm/gatt",
+    "github.com/JuulLabs-OSS/ble",
+    "github.com/JuulLabs-OSS/ble/darwin",
+    "github.com/JuulLabs-OSS/ble/linux",
     "github.com/spf13/cobra",
   ]
   solver-name = "gps-cdcl"
