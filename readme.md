@@ -5,6 +5,9 @@ A CLI tool for interacting with camera trigger devices over bluetooth.
 
 
 ## macOS
+### Pre-Built Binaries
+Check [latest artifacts](https://github.com/phelpsw/camera-trigger-bt-cli/actions) to use pre-built binaries.
+
 ### Building
 ```
 brew install golang
@@ -39,6 +42,9 @@ go build
 
 
 ## Linux
+### Pre-Built Binaries
+Check [latest artifacts](https://github.com/phelpsw/camera-trigger-bt-cli/actions) to use pre-built binaries.
+
 ### Building
 ```
 sudo apt-get install golang
