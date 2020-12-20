@@ -135,6 +135,21 @@ func NewLightConfigMessage(
 	}
 }
 
+type CameraConfigMessage struct {
+	Type     uint8
+	Length   uint8
+	Duration float32
+}
+
+func NewCameraConfigMessage(
+	duration float32) Message {
+	return CameraConfigMessage{
+		Type:     cameraConfiguration,
+		Length:   uint8(binary.Size(CameraConfigMessage{})),
+		Duration: duration,
+	}
+}
+
 type MotionSensorConfigMessage struct {
 	Type             uint8
 	Length           uint8
@@ -216,6 +231,20 @@ type LightStatusMessage struct {
 	Payload   LightStatus
 }
 
+type CameraStatus struct {
+	Temperature float32
+	Voltage     float32
+	Duration    float32
+	LogEntries  uint16
+}
+
+type CameraStatusMessage struct {
+	BasicMessage
+
+	Timestamp Calendar
+	Payload   CameraStatus
+}
+
 var rxBufArray []byte = make([]byte, 0, 512)
 var rxBuf = bytes.NewBuffer(rxBufArray)
 
@@ -271,6 +300,13 @@ func ReadMessage(b []byte) (interface{}, error) {
 			return nil, err
 		}
 		return msg, nil
+	case cameraStatus:
+		msg := CameraStatusMessage{}
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return msg, nil
 	default:
 		rxBuf.Reset()
 		return nil, fmt.Errorf("Unknown message type 0x%x, flushing buffer", header.Type)
@@ -296,6 +332,8 @@ func getMessageTypeLength(_type uint8) int {
 		return binary.Size(MotionSensorStatusMessage{})
 	case lightStatus:
 		return binary.Size(LightStatusMessage{})
+	case cameraStatus:
+		return binary.Size(CameraStatusMessage{})
 	default:
 		return -1
 	}

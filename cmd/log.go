@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -41,8 +42,10 @@ func dumpLogHandler(b *boards.Basic) error {
 		close(logDone)
 	}
 
+	fmt.Println(logIndex)
+
 	// TODO: Check index of last received log message before incrementing
-	b.GetLog(logIndex)
+	go b.GetLog(logIndex)
 	logIndex++
 
 	return nil
@@ -60,12 +63,14 @@ func dumpLog(cmd *cobra.Command, args []string) {
 	for !m.IsConnected() {
 	}
 
+	m.SetLogCallback(dumpLogHandler)
+
+	// TODO: This won't be correct unless this receives status messages
+	// Maybe make these log messages generic and then let each specific board wrap the generics
 	if m.LogEntries() > 0 {
 		m.GetLog(logIndex)
 		logIndex++
 	}
-
-	m.SetLogCallback(dumpLogHandler)
 
 	<-logDone
 	log.Println("Done")

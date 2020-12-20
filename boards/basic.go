@@ -2,6 +2,7 @@ package boards
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 
 	"github.com/phelpsw/camera-trigger-bt-cli/connection"
@@ -31,6 +32,15 @@ type Basic struct {
 	logCallback    func(*Basic) error
 
 	logMessages []messages.LogResponseMessage
+}
+
+var eps float32 = 0.000001
+
+func floatEquals(a, b float32) bool {
+	if float32(math.Abs(float64(a)-float64(b))) < eps {
+		return true
+	}
+	return false
 }
 
 func (m *Basic) Init(name string, debug bool) error {
@@ -70,6 +80,18 @@ func (m *Basic) handleBytes(b []byte) error {
 		m.observedType = reflect.TypeOf(Motion{})
 	case messages.LightStatusMessage:
 		m.observedType = reflect.TypeOf(Light{})
+	case messages.CameraStatusMessage:
+		m.observedType = reflect.TypeOf(Camera{})
+	case messages.LogResponseMessage:
+		fmt.Printf("%+v\n", msg.(messages.LogResponseMessage))
+		m.logMessages = append(m.logMessages, msg.(messages.LogResponseMessage))
+
+		if m.logCallback != nil {
+			err = m.logCallback(m)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	if m.statusCallback != nil {

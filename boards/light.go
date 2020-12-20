@@ -2,7 +2,6 @@ package boards
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/phelpsw/camera-trigger-bt-cli/connection"
 	"github.com/phelpsw/camera-trigger-bt-cli/messages"
@@ -23,15 +22,6 @@ var (
 	sustainPending bool = false
 	releasePending bool = false
 )
-
-var eps float32 = 0.000001
-
-func floatEquals(a, b float32) bool {
-	if float32(math.Abs(float64(a)-float64(b))) < eps {
-		return true
-	}
-	return false
-}
 
 func (m *Light) Init(name string, debug bool) error {
 	m.name = name
