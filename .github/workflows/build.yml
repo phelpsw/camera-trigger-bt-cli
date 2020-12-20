@@ -30,8 +30,8 @@ jobs:
     - name: Build
       run: go build -v ./...
 
-    - name: Test
-      run: go test -v ./...
+    #- name: Test
+    #  run: go test -v ./...
       
     # Upload build artifact
     - uses: actions/upload-artifact@v2
