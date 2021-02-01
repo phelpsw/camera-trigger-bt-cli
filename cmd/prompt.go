@@ -183,7 +183,6 @@ func executorFunc(in string) {
 			return
 		}
 
-		fmt.Printf("%+v\n", resp)
 		if resp.Success == 1 {
 			fmt.Printf("%s: %d\n", variable, resp.Value)
 		} else {
@@ -202,7 +201,6 @@ func executorFunc(in string) {
 			return
 		}
 
-		fmt.Printf("%+v\n", resp)
 		if resp.Success == 1 {
 			fmt.Printf("%s: %f\n", variable, resp.Value)
 		} else {
@@ -221,7 +219,6 @@ func executorFunc(in string) {
 			return
 		}
 
-		fmt.Printf("%+v\n", resp)
 		if resp.Success == 1 {
 			fmt.Printf("%s: %f\n", variable, resp.Value)
 		} else {
