@@ -40,6 +40,14 @@ const (
 	lightStatus               uint8 = 0x21
 	cameraConfiguration       uint8 = 0x30
 	cameraStatus              uint8 = 0x31
+	getFloatRequest           uint8 = 0x40
+	getFloatResponse          uint8 = 0x41
+	setFloatRequest           uint8 = 0x42
+	setFloatResponse          uint8 = 0x43
+	getUint16Request          uint8 = 0x44
+	getUint16Response         uint8 = 0x45
+	setUint16Request          uint8 = 0x46
+	setUint16Response         uint8 = 0x47
 )
 
 type Calendar struct {
@@ -245,6 +253,118 @@ type CameraStatusMessage struct {
 	Payload   CameraStatus
 }
 
+type GetUint16Request struct {
+	BasicMessage
+
+	Id      uint16
+	Persist uint8
+}
+
+func NewGetUint16Request(
+	id uint16, persist uint8) Message {
+	header := BasicMessage{Type: getUint16Request,
+		Length: uint8(binary.Size(GetUint16Request{}))}
+	return GetUint16Request{
+		BasicMessage: header,
+		Id:           id,
+		Persist:      persist,
+	}
+}
+
+type GetUint16Response struct {
+	BasicMessage
+
+	Success uint8
+	Id      uint16
+	Persist uint8
+	Value   uint16
+}
+
+type SetUint16Request struct {
+	BasicMessage
+
+	Id      uint16
+	Persist uint8
+	Value   uint16
+}
+
+func NewSetUint16Request(
+	id uint16, persist uint8, value uint16) Message {
+	header := BasicMessage{Type: setUint16Request,
+		Length: uint8(binary.Size(SetUint16Request{}))}
+	return SetUint16Request{
+		BasicMessage: header,
+		Id:           id,
+		Persist:      persist,
+		Value:        value,
+	}
+}
+
+type SetUint16Response struct {
+	BasicMessage
+
+	Success uint8
+	Id      uint16
+	Persist uint8
+	Value   uint16
+}
+
+type GetFloatRequest struct {
+	BasicMessage
+
+	Id      uint16
+	Persist uint8
+}
+
+func NewGetFloatRequest(
+	id uint16, persist uint8) Message {
+	header := BasicMessage{Type: getFloatRequest,
+		Length: uint8(binary.Size(GetFloatRequest{}))}
+	return GetFloatRequest{
+		BasicMessage: header,
+		Id:           id,
+		Persist:      persist,
+	}
+}
+
+type GetFloatResponse struct {
+	BasicMessage
+
+	Success uint8
+	Id      uint16
+	Persist uint8
+	Value   float32
+}
+
+type SetFloatRequest struct {
+	BasicMessage
+
+	Id      uint16
+	Persist uint8
+	Value   float32
+}
+
+func NewSetFloatRequest(
+	id uint16, persist uint8, value float32) Message {
+	header := BasicMessage{Type: setFloatRequest,
+		Length: uint8(binary.Size(SetFloatRequest{}))}
+	return SetFloatRequest{
+		BasicMessage: header,
+		Id:           id,
+		Persist:      persist,
+		Value:        value,
+	}
+}
+
+type SetFloatResponse struct {
+	BasicMessage
+
+	Success uint8
+	Id      uint16
+	Persist uint8
+	Value   float32
+}
+
 var rxBufArray []byte = make([]byte, 0, 512)
 var rxBuf = bytes.NewBuffer(rxBufArray)
 
@@ -255,21 +375,29 @@ func ReadMessage(b []byte) (interface{}, error) {
 		return nil, err
 	}
 
-	//log.Printf("rxBuf.len %d\n", rxBuf.Len())
-
 	// Buffer what we have and wait for more data
 	if rxBuf.Len() < 2 {
 		return nil, nil
 	}
 
+	for rxBuf.Len() > 2 {
+		if int(rxBuf.Bytes()[1]) != getMessageTypeLength(rxBuf.Bytes()[0]) {
+			_, _ = rxBuf.ReadByte()
+
+			// Not strictly an error
+			if rxBuf.Len() <= 2 {
+				return nil, nil
+			}
+		} else {
+			// A message has potentially been identified
+			break
+		}
+	}
+
+	// TODO: Maybe add a checksum and validate that here
+
 	header := BasicMessage{rxBuf.Bytes()[0], rxBuf.Bytes()[1]}
 	//log.Printf("Message Type 0x%x Length %d %d\n", header.Type, header.Length, rxBuf.Len())
-
-	// Validate message length
-	if int(header.Length) != getMessageTypeLength(header.Type) {
-		rxBuf.Reset()
-		return nil, fmt.Errorf("Type %d Unexpected Length %d", header.Type, header.Length)
-	}
 
 	// Ensure entire message is in buffer, if not just wait for more
 	if rxBuf.Len() < int(header.Length) {
@@ -307,6 +435,34 @@ func ReadMessage(b []byte) (interface{}, error) {
 			return nil, err
 		}
 		return msg, nil
+	case getUint16Response:
+		msg := GetUint16Response{}
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return msg, nil
+	case setUint16Response:
+		msg := SetUint16Response{}
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return msg, nil
+	case getFloatResponse:
+		msg := GetFloatResponse{}
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return msg, nil
+	case setFloatResponse:
+		msg := SetFloatResponse{}
+		err = binary.Read(rxBuf, binary.BigEndian, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return msg, nil
 	default:
 		rxBuf.Reset()
 		return nil, fmt.Errorf("Unknown message type 0x%x, flushing buffer", header.Type)
@@ -334,6 +490,14 @@ func getMessageTypeLength(_type uint8) int {
 		return binary.Size(LightStatusMessage{})
 	case cameraStatus:
 		return binary.Size(CameraStatusMessage{})
+	case getUint16Response:
+		return binary.Size(GetUint16Response{})
+	case setUint16Response:
+		return binary.Size(SetUint16Response{})
+	case getFloatResponse:
+		return binary.Size(GetFloatResponse{})
+	case setFloatResponse:
+		return binary.Size(SetFloatResponse{})
 	default:
 		return -1
 	}

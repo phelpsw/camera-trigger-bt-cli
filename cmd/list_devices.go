@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/phelpsw/camera-trigger-bt-cli/connection"
 	"github.com/spf13/cobra"
 )
@@ -18,5 +20,5 @@ var listCmd = &cobra.Command{
 
 func list(cmd *cobra.Command, args []string) {
 	var conn connection.Connection
-	conn.Scan()
+	conn.Scan(5 * time.Second)
 }

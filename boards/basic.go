@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"time"
 
 	"github.com/phelpsw/camera-trigger-bt-cli/connection"
 	"github.com/phelpsw/camera-trigger-bt-cli/messages"
@@ -24,12 +25,16 @@ type Generic interface {
 }
 
 type Basic struct {
-	name           string
-	conn           *connection.Connection
-	observedType   interface{}
-	logCount       uint16
-	statusCallback func(interface{}) error
-	logCallback    func(*Basic) error
+	name              string
+	conn              *connection.Connection
+	observedType      interface{}
+	logCount          uint16
+	statusCallback    func(interface{}) error
+	getUint16Callback func(interface{}) error
+	setUint16Callback func(interface{}) error
+	getFloatCallback  func(interface{}) error
+	setFloatCallback  func(interface{}) error
+	logCallback       func(*Basic) error
 
 	logMessages []messages.LogResponseMessage
 }
@@ -43,11 +48,23 @@ func floatEquals(a, b float32) bool {
 	return false
 }
 
+func (m *Basic) Scan() (map[string]connection.Device, error) {
+	if m.conn == nil {
+		m.conn = &connection.Connection{}
+	}
+	_, err := m.conn.Scan(1 * time.Second)
+	time.Sleep(5 * time.Second)
+	m.conn.StopScan()
+	return m.conn.ListDevices(), err
+}
+
 func (m *Basic) Init(name string, debug bool) error {
 	m.name = name
 	m.observedType = nil
 
-	m.conn = &connection.Connection{}
+	if m.conn == nil {
+		m.conn = &connection.Connection{}
+	}
 	err := m.conn.Init(name, m.handleBytes, debug)
 	if err != nil {
 		return err
@@ -88,6 +105,34 @@ func (m *Basic) handleBytes(b []byte) error {
 
 		if m.logCallback != nil {
 			err = m.logCallback(m)
+			if err != nil {
+				return err
+			}
+		}
+	case messages.GetUint16Response:
+		if m.getUint16Callback != nil {
+			err = m.getUint16Callback(msg)
+			if err != nil {
+				return err
+			}
+		}
+	case messages.SetUint16Response:
+		if m.setUint16Callback != nil {
+			err = m.setUint16Callback(msg)
+			if err != nil {
+				return err
+			}
+		}
+	case messages.GetFloatResponse:
+		if m.getFloatCallback != nil {
+			err = m.getFloatCallback(msg)
+			if err != nil {
+				return err
+			}
+		}
+	case messages.SetFloatResponse:
+		if m.setFloatCallback != nil {
+			err = m.setFloatCallback(msg)
 			if err != nil {
 				return err
 			}
@@ -182,4 +227,167 @@ func (m *Basic) SetUpdateCallback(callback func(interface{}) error) {
 
 func (m *Basic) SetLogCallback(callback func(*Basic) error) {
 	m.logCallback = callback
+}
+
+func (m *Basic) GetUint16(id uint16, persist uint8) (messages.GetUint16Response, error) {
+	var message messages.GetUint16Response
+	msg := messages.NewGetUint16Request(id, persist)
+
+	if !m.conn.IsConnected() {
+		return message, fmt.Errorf("not connected")
+	}
+
+	buf, err := messages.WriteMessage(msg)
+	if err != nil {
+		return message, err
+	}
+
+	response := false
+	m.getUint16Callback = func(b interface{}) error {
+		message = b.(messages.GetUint16Response)
+		response = true
+		return nil
+	}
+
+	err = m.conn.WriteBytes(buf)
+	if err != nil {
+		m.getUint16Callback = nil
+		return message, err
+	}
+
+	attempts := 0
+	for !response {
+		attempts++
+		if attempts > 500 {
+			m.getUint16Callback = nil
+			return message, fmt.Errorf("GetUint16: timeout")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	m.getUint16Callback = nil
+	return message, nil
+}
+
+func (m *Basic) SetUint16(id uint16, persist uint8, value uint16) (messages.SetUint16Response, error) {
+
+	var message messages.SetUint16Response
+	msg := messages.NewSetUint16Request(id, persist, value)
+
+	if !m.conn.IsConnected() {
+		return message, fmt.Errorf("not connected")
+	}
+
+	buf, err := messages.WriteMessage(msg)
+	if err != nil {
+		return message, err
+	}
+
+	response := false
+	m.setUint16Callback = func(b interface{}) error {
+		message = b.(messages.SetUint16Response)
+		response = true
+		return nil
+	}
+
+	err = m.conn.WriteBytes(buf)
+	if err != nil {
+		m.setUint16Callback = nil
+		return message, err
+	}
+
+	attempts := 0
+	for !response {
+		attempts++
+		if attempts > 500 {
+			m.setUint16Callback = nil
+			return message, fmt.Errorf("SetUint16: timeout")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	m.setUint16Callback = nil
+	return message, nil
+}
+
+func (m *Basic) GetFloat(id uint16, persist uint8) (messages.GetFloatResponse, error) {
+
+	var message messages.GetFloatResponse
+	msg := messages.NewGetFloatRequest(id, persist)
+
+	if !m.conn.IsConnected() {
+		return message, fmt.Errorf("not connected")
+	}
+
+	buf, err := messages.WriteMessage(msg)
+	if err != nil {
+		return message, err
+	}
+
+	response := false
+	m.getFloatCallback = func(b interface{}) error {
+		message = b.(messages.GetFloatResponse)
+		response = true
+		return nil
+	}
+
+	err = m.conn.WriteBytes(buf)
+	if err != nil {
+		m.getFloatCallback = nil
+		return message, err
+	}
+
+	attempts := 0
+	for !response {
+		attempts++
+		if attempts > 500 {
+			m.getFloatCallback = nil
+			return message, fmt.Errorf("GetFloat: timeout")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	m.getFloatCallback = nil
+	return message, nil
+}
+
+func (m *Basic) SetFloat(id uint16, persist uint8, value float32) (messages.SetFloatResponse, error) {
+
+	var message messages.SetFloatResponse
+	msg := messages.NewSetFloatRequest(id, persist, value)
+
+	if !m.conn.IsConnected() {
+		return message, fmt.Errorf("not connected")
+	}
+
+	buf, err := messages.WriteMessage(msg)
+	if err != nil {
+		return message, err
+	}
+
+	response := false
+	m.setFloatCallback = func(b interface{}) error {
+		message = b.(messages.SetFloatResponse)
+		response = true
+		return nil
+	}
+
+	err = m.conn.WriteBytes(buf)
+	if err != nil {
+		m.setFloatCallback = nil
+		return message, err
+	}
+
+	attempts := 0
+	for !response {
+		attempts++
+		if attempts > 500 {
+			m.setFloatCallback = nil
+			return message, fmt.Errorf("SetFloat: timeout")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	m.setFloatCallback = nil
+	return message, nil
 }

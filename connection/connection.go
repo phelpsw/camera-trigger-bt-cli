@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
+	"time"
+	"unicode"
 
 	"github.com/JuulLabs-OSS/ble"
 	"github.com/JuulLabs-OSS/ble/examples/lib/dev"
@@ -18,6 +21,9 @@ var uartServiceTXCharID = ble.MustParse("495353431e4d4bd9ba6123c647249616")
 
 type readBytesCallbackType func(b []byte) error
 
+var mutex sync.RWMutex
+var devices map[string]Device
+
 type Connection struct {
 	device                ble.Device
 	client                ble.Client
@@ -28,7 +34,20 @@ type Connection struct {
 	connected             bool
 }
 
+type Device struct {
+	Address  string    `json:"address"`
+	Detected time.Time `json:"detected"`
+	Since    string    `json:"since"`
+	Name     string    `json:"name"`
+	RSSI     int       `json:"rssi"`
+	//Advertisement string    `json:"advertisement"`
+	//ScanResponse  string    `json:"scanresponse"`
+}
+
 func (curr *Connection) setup() error {
+	if devices == nil {
+		devices = make(map[string]Device)
+	}
 	if curr.device != nil {
 		return nil
 	}
@@ -41,6 +60,20 @@ func (curr *Connection) setup() error {
 	ble.SetDefaultDevice(curr.device)
 	fmt.Printf("complete\n")
 	return nil
+}
+
+func adScanHandler(a ble.Advertisement) {
+	mutex.Lock()
+	device := Device{
+		Address:  a.Addr().String(),
+		Detected: time.Now(),
+		Name:     clean(a.LocalName()),
+		RSSI:     a.RSSI(),
+		//Advertisement: formatHex(hex.EncodeToString(a.LEAdvertisingReportRaw())),
+		//ScanResponse:  formatHex(hex.EncodeToString(a.ScanResponseRaw())),
+	}
+	devices[a.Addr().String()] = device
+	mutex.Unlock()
 }
 
 func advHandler(a ble.Advertisement) {
@@ -83,16 +116,39 @@ func chkErr(err error) error {
 	return err
 }
 
+var scanStop bool
+
 // Scan for eligible devices and print details when they are found
-func (curr *Connection) Scan() error {
+func (curr *Connection) Scan(dur time.Duration) (map[string]Device, error) {
 	err := curr.setup()
+
 	if err != nil {
-		return err
+		return devices, err
 	}
 
-	var allowDuplicates bool = false
-	ctx := ble.WithSigHandler(context.WithCancel(context.Background()))
-	return chkErr(ble.Scan(ctx, allowDuplicates, advHandler, advFilter()))
+	scanStop = false
+	go func() {
+		var allowDuplicates bool = false
+		for !scanStop {
+			ctx := ble.WithSigHandler(context.WithTimeout(context.Background(), dur))
+			err = ble.Scan(ctx, allowDuplicates, adScanHandler, advFilter())
+			if err != nil {
+				return
+			}
+		}
+		return
+	}()
+
+	return devices, nil
+}
+
+func (curr *Connection) StopScan() error {
+	scanStop = true
+	return nil
+}
+
+func (curr *Connection) ListDevices() map[string]Device {
+	return devices
 }
 
 // Set the callback to be used when receiving bytes
@@ -255,4 +311,22 @@ func propString(p ble.Property) string {
 		}
 	}
 	return s
+}
+
+// reformat string for proper display of hex
+func formatHex(instr string) (outstr string) {
+	outstr = ""
+	for i := range instr {
+		if i%2 == 0 {
+			outstr += instr[i:i+2] + " "
+		}
+	}
+	return
+}
+
+// clean up the non-ASCII characters
+func clean(input string) string {
+	return strings.TrimFunc(input, func(r rune) bool {
+		return !unicode.IsGraphic(r)
+	})
 }
