@@ -41,7 +41,8 @@ var uint16_temp = []Member{
 	{"device_type", "Device type"},
 	{"led_red_state", "Red LED State, 0 - Off, 1 - On, 2 - Blink Once, 3 - Blink Continuous"},
 	{"led_green_state", "Green LED State, 0 - Off, 1 - On, 2 - Blink Once, 3 - Blink Continuous"},
-	{"runcam_control_state", ""},
+	{"runcam_control_state", "Runcam controller state"},
+	{"runcam_state", "Runcam button push state machine"},
 	{"sony_control_state", ""},
 	{"sony_version_major", ""},
 	{"sony_version_minor", ""},
@@ -59,8 +60,7 @@ var uint16_temp = []Member{
 
 var float_persist = []Member{
 	{"motion_cooldown", "Minimum seconds between motion sensor retrigger"},
-	{"runcam_video_duration", "Length of runcam recording in seconds"},
-	{"sony_video_duration", "Length of sony recording in seconds"},
+	{"video_duration", "Length of video recording in seconds"},
 	{"led_on_period", "On time of LED blink"},
 	{"led_off_period", "Seconds between continuous LED blinks"},
 	{"light_level2_thresh", "Lux level for light brightness level 2"},

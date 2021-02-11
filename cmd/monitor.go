@@ -22,7 +22,6 @@ var monitorCmd = &cobra.Command{
 
 var motionBoard boards.Motion
 var lightBoard boards.Light
-var cameraBoard boards.Camera
 
 func monitorHandler(m interface{}) error {
 	switch m.(type) {
@@ -36,10 +35,6 @@ func monitorHandler(m interface{}) error {
 			// Initialize motion board type from basic board
 			lightBoard.InitFromBasic(b)
 			lightBoard.SetUpdateCallback(monitorHandler)
-		} else if b.GetType() == reflect.TypeOf(boards.Camera{}) {
-			// Initialize motion board type from basic board
-			cameraBoard.InitFromBasic(b)
-			cameraBoard.SetUpdateCallback(monitorHandler)
 		} else {
 			fmt.Printf("Unknown type, %v\n", b.GetType())
 		}
@@ -63,16 +58,7 @@ func monitorHandler(m interface{}) error {
 		fmt.Printf("    Release %.2f sec", b.Release())
 		fmt.Printf("  CPU Temp %.2f degC\n", b.Temperature())
 		fmt.Printf("  Log Count: %d\n", b.LogEntries())
-
-	case *boards.Camera:
-		b := m.(*boards.Camera)
-		fmt.Printf("Camera Controller\n")
-		fmt.Printf("  Video Duration %.2f sec\n", b.Duration())
-		fmt.Printf("  Battery %.2f V\n", b.Voltage())
-		fmt.Printf("  CPU Temp %.2f degC\n", b.Temperature())
-		fmt.Printf("  Log Count: %d\n", b.LogEntries())
 	}
-
 	fmt.Printf("\n")
 
 	return nil

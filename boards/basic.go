@@ -97,8 +97,6 @@ func (m *Basic) handleBytes(b []byte) error {
 		m.observedType = reflect.TypeOf(Motion{})
 	case messages.LightStatusMessage:
 		m.observedType = reflect.TypeOf(Light{})
-	case messages.CameraStatusMessage:
-		m.observedType = reflect.TypeOf(Camera{})
 	case messages.LogResponseMessage:
 		fmt.Printf("%+v\n", msg.(messages.LogResponseMessage))
 		m.logMessages = append(m.logMessages, msg.(messages.LogResponseMessage))

@@ -38,8 +38,6 @@ const (
 	motionSensorTrigger       uint8 = 0x12
 	lightConfiguration        uint8 = 0x20
 	lightStatus               uint8 = 0x21
-	cameraConfiguration       uint8 = 0x30
-	cameraStatus              uint8 = 0x31
 	getFloatRequest           uint8 = 0x40
 	getFloatResponse          uint8 = 0x41
 	setFloatRequest           uint8 = 0x42
@@ -143,21 +141,6 @@ func NewLightConfigMessage(
 	}
 }
 
-type CameraConfigMessage struct {
-	Type     uint8
-	Length   uint8
-	Duration float32
-}
-
-func NewCameraConfigMessage(
-	duration float32) Message {
-	return CameraConfigMessage{
-		Type:     cameraConfiguration,
-		Length:   uint8(binary.Size(CameraConfigMessage{})),
-		Duration: duration,
-	}
-}
-
 type MotionSensorConfigMessage struct {
 	Type             uint8
 	Length           uint8
@@ -237,20 +220,6 @@ type LightStatusMessage struct {
 
 	Timestamp Calendar
 	Payload   LightStatus
-}
-
-type CameraStatus struct {
-	Temperature float32
-	Voltage     float32
-	Duration    float32
-	LogEntries  uint16
-}
-
-type CameraStatusMessage struct {
-	BasicMessage
-
-	Timestamp Calendar
-	Payload   CameraStatus
 }
 
 type GetUint16Request struct {
@@ -428,13 +397,6 @@ func ReadMessage(b []byte) (interface{}, error) {
 			return nil, err
 		}
 		return msg, nil
-	case cameraStatus:
-		msg := CameraStatusMessage{}
-		err = binary.Read(rxBuf, binary.BigEndian, &msg)
-		if err != nil {
-			return nil, err
-		}
-		return msg, nil
 	case getUint16Response:
 		msg := GetUint16Response{}
 		err = binary.Read(rxBuf, binary.BigEndian, &msg)
@@ -488,8 +450,6 @@ func getMessageTypeLength(_type uint8) int {
 		return binary.Size(MotionSensorStatusMessage{})
 	case lightStatus:
 		return binary.Size(LightStatusMessage{})
-	case cameraStatus:
-		return binary.Size(CameraStatusMessage{})
 	case getUint16Response:
 		return binary.Size(GetUint16Response{})
 	case setUint16Response:
