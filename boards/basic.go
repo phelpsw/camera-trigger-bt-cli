@@ -389,3 +389,23 @@ func (m *Basic) SetFloat(id uint16, persist uint8, value float32) (messages.SetF
 	m.setFloatCallback = nil
 	return message, nil
 }
+
+func (m *Basic) Trigger(lux float32) error {
+	msg := messages.NewMotionSensorTriggerMessage(lux)
+
+	if !m.conn.IsConnected() {
+		return fmt.Errorf("not connected")
+	}
+
+	buf, err := messages.WriteMessage(msg)
+	if err != nil {
+		return err
+	}
+
+	err = m.conn.WriteBytes(buf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

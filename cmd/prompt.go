@@ -118,7 +118,6 @@ func getFloatIndex(input string) (uint16, uint8, error) {
 }
 func executorFunc(in string) {
 	in = strings.TrimSpace(in)
-	//fmt.Println("Your input: " + in)
 
 	var value_uint16 uint16
 	var value_float float32
@@ -143,11 +142,11 @@ func executorFunc(in string) {
 		}
 		variable = blocks[1]
 		tmp, err := strconv.ParseUint(blocks[2], 10, 16)
-		value_uint16 = uint16(tmp)
 		if err != nil {
 			fmt.Println("cannot convert value to uint16")
 			return
 		}
+		value_uint16 = uint16(tmp)
 	case "gf":
 		command = "gf"
 		if len(blocks) != 2 {
@@ -163,11 +162,27 @@ func executorFunc(in string) {
 		}
 		variable = blocks[1]
 		tmp, err := strconv.ParseFloat(blocks[2], 32)
-		value_float = float32(tmp)
 		if err != nil {
 			fmt.Println("cannot convert value to float")
 			return
 		}
+		value_float = float32(tmp)
+	case "t":
+		command = "t"
+		if len(blocks) == 1 {
+			value_float = 0.0
+		} else if len(blocks) == 2 {
+			tmp, err := strconv.ParseFloat(blocks[1], 32)
+			if err != nil {
+				fmt.Println("cannot convert value to float")
+				return
+			}
+			value_float = float32(tmp)
+		} else if len(blocks) > 2 {
+			fmt.Println("syntax error: t <lux>")
+			return
+		}
+
 	}
 
 	switch command {
@@ -243,6 +258,14 @@ func executorFunc(in string) {
 		} else {
 			fmt.Printf("%s: set failed\n", variable)
 		}
+	case "t":
+		err := m.Trigger(value_float)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		fmt.Printf("trigger sent (lux %f)\n", value_float)
 	}
 }
 
@@ -257,6 +280,7 @@ func completerFunc(d prompt.Document) []prompt.Suggest {
 		{Text: "si", Description: "Set uint16"},
 		{Text: "gf", Description: "Get float"},
 		{Text: "sf", Description: "Set float"},
+		{Text: "t", Description: "Trigger"},
 
 		{Text: "exit", Description: "Exit the program"},
 	}
