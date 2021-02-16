@@ -29,18 +29,25 @@ type Member struct {
 }
 
 var uint16_persist = []Member{
-	{"motion_thresh", "Motion sensor motion threshold value 0-65535"},
+	{"device_id", "Device ID"},
+	{"device_group", "Device Group ID"},
 	{"sony_sleep_mode", "Sony camera sleep mode, 0 - Off, 1 - Idle"},
+	{"pir_blink_on_detect", "1 - red led, 2 - green led, 0 - disabled"},
+	{"pir_transmit_on_detect", "1 - transmit enable, 0 - disabled"},
 }
 
 var uint16_temp = []Member{
-	{"major_version", "Major version number"},
-	{"minor_version", "Minor version number"},
-	{"patch_version", "Patch version number"},
-	{"dirty_version", "Bit indicating whether local mods have been made"},
+	{"version_major", "Major version number"},
+	{"version_minor", "Minor version number"},
+	{"version_patch", "Patch version number"},
+	{"version_dirty", "Bit indicating whether local mods have been made"},
+	{"version_hash1", "Top 16 bits of git version hash"},
+	{"version_hash2", "Lower 16 bits of git version hash"},
 	{"device_type", "Device type"},
 	{"led_red_state", "Red LED State, 0 - Off, 1 - On, 2 - Blink Once, 3 - Blink Continuous"},
 	{"led_green_state", "Green LED State, 0 - Off, 1 - On, 2 - Blink Once, 3 - Blink Continuous"},
+	{"pir_state", "PIR state machine state"},
+	{"pir_trigger_count", "PIR sensor trigger count since boot"},
 	{"runcam_control_state", "Runcam controller state"},
 	{"runcam_state", "Runcam button push state machine"},
 	{"sony_control_state", ""},
@@ -59,7 +66,9 @@ var uint16_temp = []Member{
 }
 
 var float_persist = []Member{
-	{"motion_cooldown", "Minimum seconds between motion sensor retrigger"},
+	{"pir_threshold", "PIR trigger threshold (0.0 - 1.0)"},
+	{"pir_cooldown", "Minimum seconds between motion sensor retrigger"},
+	{"lux_interval", "Lux measurement interval"},
 	{"video_duration", "Length of video recording in seconds"},
 	{"led_on_period", "On time of LED blink"},
 	{"led_off_period", "Seconds between continuous LED blinks"},
@@ -75,6 +84,8 @@ var float_temp = []Member{
 	{"cpu_temperature", "Major version number"},
 	{"battery_voltage", "Minor version number"},
 	{"uptime", "System uptime in seconds"},
+	{"pir_value", "PIR sensed value"},
+	{"lux_value", "Lux measurement"},
 }
 
 var m boards.Basic
