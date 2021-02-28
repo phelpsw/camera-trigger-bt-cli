@@ -32,6 +32,7 @@ var uint16_persist = []Member{
 	{"device_id", "Device ID"},
 	{"device_group", "Device Group ID"},
 	{"sony_sleep_mode", "Sony camera sleep mode, 0 - Off, 1 - Idle"},
+	{"led_on_record", "1 - red led, 2 - green led, 0 - disabled"},
 	{"pir_blink_on_detect", "1 - red led, 2 - green led, 0 - disabled"},
 	{"pir_transmit_on_detect", "1 - transmit enable, 0 - disabled"},
 }
