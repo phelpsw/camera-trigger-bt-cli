@@ -33,8 +33,8 @@ var uint16_persist = []Member{
 	{"device_group", "Device Group ID"},
 	{"sony_sleep_mode", "Sony camera sleep mode, 0 - Off, 1 - Idle"},
 	{"led_on_record", "1 - red led, 2 - green led, 0 - disabled"},
-	{"pir_blink_on_detect", "1 - red led, 2 - green led, 0 - disabled"},
-	{"pir_transmit_on_detect", "1 - transmit enable, 0 - disabled"},
+	{"motion_blink_on_detect", "1 - red led, 2 - green led, 0 - disabled"},
+	{"motion_transmit_on_detect", "1 - transmit enable, 0 - disabled"},
 }
 
 var uint16_temp = []Member{
@@ -51,8 +51,8 @@ var uint16_temp = []Member{
 	{"device_type", "Device type"},
 	{"led_red_state", "Red LED State, 0 - Off, 1 - On, 2 - Blink Once, 3 - Blink Continuous"},
 	{"led_green_state", "Green LED State, 0 - Off, 1 - On, 2 - Blink Once, 3 - Blink Continuous"},
-	{"pir_state", "PIR state machine state"},
-	{"pir_trigger_count", "PIR sensor trigger count since boot"},
+	{"motion_state", "Motion sensor state machine state"},
+	{"motion_trigger_count", "Motion sensor trigger count since boot"},
 	{"trigger_state", "State of device trigger, 0 available, 1 - cooldown"},
 	{"runcam_control_state", "Runcam controller state"},
 	{"runcam_state", "Runcam button push state machine"},
@@ -72,8 +72,9 @@ var uint16_temp = []Member{
 }
 
 var float_persist = []Member{
-	{"pir_threshold", "PIR trigger threshold (0.0 - 1.0)"},
-	{"pir_cooldown", "Minimum seconds between motion sensor retrigger"},
+	{"motion_gain", "Motion sensor gain (0.0 - 1.0)"},
+	{"motion_threshold", "Motion sensor trigger threshold (0.0 - 1.0)"},
+	{"motion_cooldown", "Minimum seconds between motion sensor retrigger"},
 	{"lux_interval", "Lux measurement interval"},
 	{"video_duration", "Length of video recording trigger event in seconds"},
 	{"trigger_max_duration", "Cumulative consecutive length of trigger events in seconds"},
@@ -92,7 +93,7 @@ var float_temp = []Member{
 	{"cpu_temperature", "Major version number"},
 	{"battery_voltage", "Minor version number"},
 	{"uptime", "System uptime in seconds"},
-	{"pir_value", "PIR sensed value"},
+	{"motion_value", "Motion sensor value"},
 	{"lux_value", "Lux measurement"},
 }
 
